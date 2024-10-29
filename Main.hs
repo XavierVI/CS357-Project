@@ -1,10 +1,10 @@
 import Graphics.Gloss
-import Graphics.Gloss.Interface.IO.Animate (animateIO, Controller (controllerSetRedraw))
+import Graphics.Gloss.Data.ViewPort (ViewPort)
 
 {-  -}
 
 window :: Display
-window = InWindow "Nice Window" (200, 200) (10, 10)
+window = InWindow "Nice Window" (800, 800) (50, 50)
 
 box :: Float -> Float -> Path
 box x y = [(u, w) | u <- [0..x], w <- [0..y]]
@@ -29,3 +29,29 @@ animationFunc :: Float -> Picture
 animationFunc time = Circle (2*time)
 
 mainAnimatedCircle = animate window white animationFunc
+
+
+-- pendulum example: https://mmhaskell.com/blog/2019/3/25/making-a-glossy-game-part-1
+
+type Model = (Float, Float)
+
+simulationRate :: Int
+simulationRate = 20
+
+initialModel :: Model
+initialModel = (0,0)
+
+drawingFunc :: Model -> Picture
+drawingFunc (theta, dtheta) = Line [(0, 0), (200 * cos theta, 200 * sin theta)]
+
+updateFunc :: ViewPort -> Float -> Model -> Model
+updateFunc _ dt (theta, dtheta) = (theta + dt * dtheta, dtheta - dt * (cos theta))
+
+pendulumExample = simulate
+  window
+  white
+  simulationRate
+  initialModel
+  drawingFunc
+  updateFunc
+    
