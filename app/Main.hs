@@ -22,13 +22,13 @@ Notes:
 - 
 
  -}
-main = display window white (Line (linePath 80 80))
+-- main = display window white (Line (linePath 80 80))
 
 -- animating a growing circle
 animationFunc :: Float -> Picture
 animationFunc time = Circle (2*time)
 
-mainAnimatedCircle = animate window white animationFunc
+-- mainAnimatedCircle = animate window white animationFunc
 
 
 -- pendulum example: https://mmhaskell.com/blog/2019/3/25/making-a-glossy-game-part-1
@@ -47,7 +47,7 @@ drawingFunc (theta, dtheta) = Line [(0, 0), (200 * cos theta, 200 * sin theta)]
 updateFunc :: ViewPort -> Float -> Model -> Model
 updateFunc _ dt (theta, dtheta) = (theta + dt * dtheta, dtheta - dt * (cos theta))
 
-pendulumExample = simulate
+main = simulate
   window
   white
   simulationRate
