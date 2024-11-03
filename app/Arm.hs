@@ -31,15 +31,21 @@ initialState = RobotArm [Link 100 90, Link 45 45]
  - This function takes a starting point and returns a Line that represents the link.
 
  -}
-drawLink :: Link -> Point
-drawLink (Link linkLength angle) = endPoint
+drawLink :: Link -> Point -> Point
+drawLink (Link linkLength angle) (x, y) = endPoint
   where
-    x = linkLength * cos (degToRad angle)
-    y = linkLength * sin (degToRad angle)
-    endPoint = (x, y)
+    x' = linkLength * cos (degToRad angle)
+    y' = linkLength * sin (degToRad angle)
+    endPoint = (x+x', y+y')
 
 displayArm :: RobotArm -> Picture
-displayArm (RobotArm links) = Color red $ Line ((0, 0) : [(x, y) | (x, y) <- points])
+displayArm (RobotArm links) = Line ((0, 0) : [(x, y) | (x, y) <- points])
   where
-    points = map drawLink links
+    points = generatePoints links (0,0)
+
+generatePoints :: [Link] -> Point -> [Point]
+generatePoints [] _ = []
+generatePoints (link:links) prevPoint = endPoint : generatePoints links endPoint
+  where
+    endPoint = drawLink link prevPoint
 
