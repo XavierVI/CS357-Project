@@ -4,6 +4,7 @@ module Arm where
 import Graphics.Gloss
 import Graphics.Gloss.Geometry.Angle
 import Math
+import Graphics.Gloss.Data.ViewPort (ViewPort)
 
 {- 
   This file is going to be where we define the model of the arm and functions to draw/move the arm in the window.
@@ -40,9 +41,13 @@ generatePoints (link:links) prevPoint = endPoint : generatePoints links endPoint
     endPoint = drawLink link prevPoint
 
 
-displayArm :: RobotArm -> Picture
-displayArm (RobotArm links) = Line ((0, 0) : [(x, y) | (x, y) <- points])
+drawArm :: RobotArm -> Picture
+drawArm (RobotArm links) = Line ((0, 0) : [(x, y) | (x, y) <- points])
   where
     points = generatePoints links (0,0)
 
+-- redraw the arm with a new angle for each joint
+-- for now, lets assume we only have two links
+updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
+updateArm _ dt (RobotArm [(Link l1 a1), (Link l2 a2)]) = RobotArm [(Link l1 (a1+dt)), (Link l2 (a2+dt))]
 
