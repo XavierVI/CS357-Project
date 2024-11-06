@@ -1,10 +1,8 @@
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Arm where
 
 
 import Graphics.Gloss
 import Graphics.Gloss.Geometry.Angle
-import Math
 import Graphics.Gloss.Data.ViewPort (ViewPort)
 
 {- 
