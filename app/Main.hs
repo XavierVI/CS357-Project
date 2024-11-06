@@ -10,7 +10,7 @@ main :: IO()
 main = simulate
   window
   white
-  200
+  100
   (RobotArm [Link 100 90, Link 100 35])
   drawArm
   updateArm
@@ -18,7 +18,7 @@ main = simulate
 
 {- 
   Examples
- -}
+ 
 box :: Float -> Float -> Path
 box x y = [(u, w) | u <- [0..x], w <- [0..y]]
 
@@ -55,3 +55,4 @@ pendulumMain = simulate
   initialModel
   drawingFunc
   updateFunc
+  -}
