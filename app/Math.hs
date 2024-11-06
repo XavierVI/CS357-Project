@@ -3,12 +3,10 @@ module Math where
 import Graphics.Gloss
 import Graphics.Gloss.Geometry.Angle
   
-{-
-- This function will rotate a link by theta degrees.
-- It's intended to be given the end point of a link
--}
-rotateLine :: Float -> Point -> Point
-rotateLine theta (x, y) = ( x*cos rad - y*sin rad, 
-                            x*sin rad + y*cos rad )
-  where
-    rad = degToRad theta
+
+-- GD Loss function
+-- loss :: [Link] -> Float -> Float -> Float
+-- loss [Link l1 theta1, Link l2 theta2] xd yd = sqrt( term1**2 + term2**2 )
+--   where
+--     term1 = xd - l1 * cos theta1 + l2 * cos theta2
+--     term2 = xd - l1 * sin theta1 + l2 * sin theta2

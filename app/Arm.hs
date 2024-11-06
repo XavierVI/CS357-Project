@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Arm where
 
 
@@ -25,6 +26,10 @@ data RobotArm = RobotArm [Link]
   
   - displayArm takes a RobotArm and returns a Line, which is a visual representation of the arm.
 
+  ## Moving the arm in the window:
+  The function updateArm is going to update the joint angles for the links and automatically
+  call the previous three functions to redraw the arm
+
  -}
 drawLink :: Link -> Point -> Point
 drawLink (Link linkLength angle) (x, y) = endPoint
@@ -49,5 +54,28 @@ drawArm (RobotArm links) = Line ((0, 0) : [(x, y) | (x, y) <- points])
 -- redraw the arm with a new angle for each joint
 -- for now, lets assume we only have two links
 updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
-updateArm _ dt (RobotArm [(Link l1 a1), (Link l2 a2)]) = RobotArm [(Link l1 (a1+dt)), (Link l2 (a2+dt))]
+updateArm _ dt (RobotArm [(Link l1 a1), (Link l2 a2)]) = RobotArm [(Link l1 t1), (Link l2 t2)]
+  where
+    [t1, t2] = ik [(Link l1 a1), (Link l2 a2)] (200, 200)
 
+
+
+loss :: [Link] -> Point -> Float
+loss [Link l1 theta1, Link l2 theta2] (xd, yd) = sqrt ( term1**2 + term2**2 )
+  where
+    term1 = xd - l1 * cos theta1 + l2 * cos theta2
+    term2 = yd - l1 * sin theta1 + l2 * sin theta2
+
+lossSlope :: [Link] -> Point -> [Float]
+lossSlope links desiredPoint = [ diff slope | Link len slope <- links ]
+  where
+    updatedLinks = [ Link l t+0.00001 | (Link l t) <- links ]
+    diff updatedLink = (loss updatedLinks desiredPoint - loss links desiredPoint) / 0.00001
+
+
+gradDesc :: [Link] -> Point -> [Link]
+gradDesc links desiredPoint = [ go newLink loss | newLink <- zip links losses ]
+  where
+    learningRate = 0.01
+    losses = loss links desiredPoint
+    go (Link l theta) loss = theta - learningRate * loss
