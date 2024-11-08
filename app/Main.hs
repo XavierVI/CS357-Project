@@ -1,5 +1,5 @@
 import Graphics.Gloss
-import Arm ( RobotArm(RobotArm), Link(Link), drawArm, updateArm )
+import Arm ( RobotArm(RobotArm), Link(Link), drawArm, updateArm, updateArmGD )
 import Graphics.Gloss.Data.ViewPort
 
 window :: Display

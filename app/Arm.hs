@@ -41,6 +41,10 @@ drawLink (Link linkLength angle) (x, y) = endPoint
 
 generatePoints :: [Link] -> Point -> [Point]
 generatePoints [] _ = []
+generatePoints [Link l1 a1, Link l2 a2] _ = [(0,0), p1, p2]
+  where
+    p1 = drawLink (Link l1 a1) (0,0)
+    p2 = drawLink (Link l2 (a1+a2)) p1
 generatePoints (link:links) prevPoint = endPoint : generatePoints links endPoint
   where
     endPoint = drawLink link prevPoint
@@ -57,19 +61,36 @@ drawArm (RobotArm links) = Line ((0, 0) : [(x, y) | (x, y) <- points])
 updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
 updateArm _ dt (RobotArm links) = RobotArm updatedLinks
   where
-    step          = (5.0 * pi) / 180
-    desiredAngles = ik links (200, 0)
-    updatedLinks  = zipWith (\(Link l a) a' -> Link l (a + signum (a' - a) * step)) links desiredAngles
+    desiredAngles = ik links (200, 200)
+    updatedLinks  = zipWith updateAngle links desiredAngles
 
 
+-- returns the joint angles required for the desired position in radians
 ik :: [Link] -> Point -> [Float]
-ik [Link l1 a1, Link l2 a2] (x, y) = [a1', a2']
+ik links (x, y) = [a1', a2']
   where
-    -- Link l1 a1 = links !! 0
-    -- Link l2 a2 = links !! 1
-    a2' = acos ( (x**2 + y**2 - l1**2 - l2**2) / (2*l1*l2) )
-    a1' = atan (y/x) - atan ((l2*sin a2') / (l1 + l2 * cos a2')  )
-ik links (x, y) = [0.0, 0.0]
+    Link l1 a1 = links !! 0
+    Link l2 a2 = links !! 1
+    gamma = atan2 y x
+    alpha = acos ( clamp ((x**2 + y**2 + l1**2 - l2**2) / (2*l1*sqrt(x**2 + y**2)) ))
+    beta  = acos ( clamp ((x**2 + y**2 - l1**2 - l2**2) / 2*(l1*l2)))
+    a1' = gamma - alpha
+    a2' = beta - pi
+
+-- Helper function to clamp values for acos
+clamp :: Float -> Float
+clamp val = max (-1) (min 1 val)
+
+-- a' is in radians
+updateAngle :: Link -> Float -> Link
+updateAngle (Link l a) a'
+  | abs (a' - a) > tolerance = Link l (radToDeg updatedAngle)
+  | otherwise               = Link l a
+  where
+    tolerance     = (15.0 * pi) / 180
+    step          = (1.0 * pi) / 180
+    updatedAngle  = degToRad a + signum (a' - degToRad a) * step
+
 
 -- GD stuff
 -- redraw the arm with a new angle for each joint
@@ -77,7 +98,7 @@ ik links (x, y) = [0.0, 0.0]
 updateArmGD :: ViewPort -> Float -> RobotArm -> RobotArm
 updateArmGD _ dt (RobotArm links) = RobotArm updatedLinks
   where
-    learningRate = 0.001
+    learningRate = 0.01
     target       = (-150, 0)
     gradient     = gradLoss [links !! 0, links !! 1] target
     updatedLinks = zipWith updateLinkAngle [links !! 0, links !! 1] gradient
@@ -89,8 +110,8 @@ updateArmGD _ dt (RobotArm links) = RobotArm updatedLinks
 loss :: [Link] -> Point -> Float
 loss [Link l1 theta1, Link l2 theta2] (xd, yd) = sqrt ( term1**2 + term2**2 )
   where
-    term1 = xd - l1 * cos theta1 + l2 * cos theta2
-    term2 = yd - l1 * sin theta1 + l2 * sin theta2
+    term1 = xd - l1 * cos (degToRad theta1) + l2 * cos (degToRad theta2)
+    term2 = yd - l1 * sin (degToRad theta1) + l2 * sin (degToRad theta2)
 
 
 -- assume its only two joints, otherwise it's hard to compute the partial derivative
@@ -98,7 +119,7 @@ loss [Link l1 theta1, Link l2 theta2] (xd, yd) = sqrt ( term1**2 + term2**2 )
 gradLoss :: [Link] -> Point -> [Float]
 gradLoss [Link l1 a1, Link l2 a2] dPoint = [pLossWRTa1, pLossWRTa2]
   where
-    h          = 0.0001
+    h          = 0.1
     loss1      = loss [Link l1 a1,     Link l2 a2    ] dPoint
     adjLoss1   = loss [Link l1 (a1+h), Link l2 a2    ] dPoint
     loss2      = loss [Link l1 a1,     Link l2 a2    ] dPoint
