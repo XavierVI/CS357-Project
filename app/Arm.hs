@@ -31,6 +31,7 @@ data RobotArm = RobotArm [Link]
   call the previous three functions to redraw the arm
 
 -----------------------------------------------------------------------}
+
 -- this function generates the position of each link in cartesian space
 generatePoints :: [Link] -> Point -> [Point]
 generatePoints [] _ = []
@@ -58,23 +59,19 @@ updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
 updateArm _ dt (RobotArm links) = RobotArm updatedLinks
   where
     desiredAngles = ik links  (-60, 128.06248)
-    -- updatedLinks  = zipWith updateAngle links desiredAngles
+    -- updatedLinks  = zipWith updateAngleGD links desiredAngles
     updatedLinks = newtonRaphson links (0, 200)
 
--- redraw the arm with a new angle for each joint
--- for now, lets assume we only have two links
+
+-- redraws the arm with a new angle for each joint using gradient descent
 updateArmGD :: ViewPort -> Float -> RobotArm -> RobotArm
 updateArmGD _ dt (RobotArm links) = RobotArm updatedLinks
   where
     learningRate = 0.01
-    target       = (200, 0)
-    gradient     = gradLoss [links !! 0, links !! 1] target
-    updatedLinks = zipWith updateLinkAngle [links !! 0, links !! 1] gradient
+    target       = (0, 200)
+    grad         = gradient (loss target) links
+    updatedLinks = zipWith updateLinkAngle [links !! 0, links !! 1] grad
     updateLinkAngle (Link len angle) grad = Link len (angle - learningRate * grad)
-    -- a1' = a1 - learningRate * (gradient !! 0)
-    -- a2' = a2 - learningRate * (gradient !! 1)
-{- updateArm _ dt (RobotArm [(Link l1 a1), (Link l2 a2)]) = RobotArm [(Link l1 (a1+dt)), (Link l2 (a2+dt))]
- -}
 
 
 {-------------------------------------------------------------
@@ -117,8 +114,8 @@ clamp :: Float -> Float
 clamp val = max (-1) (min 1 val)
 
 -- updates the angles for a link, a' should be passed in radians
-updateAngle :: Link -> Float -> Link
-updateAngle (Link l a) a'
+updateAngleGD :: Link -> Float -> Link
+updateAngleGD (Link l a) a'
   | abs (a' - a) > tolerance = Link l (radToDeg updatedAngle)
   | otherwise               = Link l a
   where
@@ -127,29 +124,12 @@ updateAngle (Link l a) a'
     updatedAngle  = degToRad a + signum (a' - degToRad a) * step
 
 
-loss :: [Link] -> Point -> Float
-loss links (xd, yd) = sqrt ( term1**2 + term2**2 )
+loss :: Point -> [Link] -> Float
+loss (xd, yd) links = sqrt ( (term1**2) + (term2**2) )
   where
-    Link l1 theta1 = head links
-    Link l2 theta2 = links !! 1
-    term1 = xd - l1 * cos (degToRad theta1) + l2 * cos (degToRad theta2)
-    term2 = yd - l1 * sin (degToRad theta1) + l2 * sin (degToRad theta2)
+    term1 = xd - position cos links
+    term2 = yd - position sin links
 
-
--- assume its only two joints, otherwise it's hard to compute the partial derivative
--- with respect to other parameters
-gradLoss :: [Link] -> Point -> [Float]
-gradLoss links dPoint = [pLossWRTa1, pLossWRTa2]
-  where
-    Link l1 a1 = head links
-    Link l2 a2 = links !! 1
-    h          = 0.1
-    loss1      = loss [Link l1 a1,     Link l2 a2    ] dPoint
-    adjLoss1   = loss [Link l1 (a1+h), Link l2 a2    ] dPoint
-    loss2      = loss [Link l1 a1,     Link l2 a2    ] dPoint
-    adjLoss2   = loss [Link l1 a1,     Link l2 (a2+h)] dPoint
-    pLossWRTa1 = (adjLoss1 - loss1) / h
-    pLossWRTa2 = (adjLoss2 - loss2) / h
 
 {- 
   The gradient takes a scalar valued function and returns a vector of the
@@ -160,7 +140,7 @@ gradLoss links dPoint = [pLossWRTa1, pLossWRTa2]
 
  -}
 
--- 
+
 gradient :: ([Link] -> Float) -> [Link] -> [Float]
 gradient f links = [partial1, partial2]
   where
