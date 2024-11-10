@@ -10,7 +10,7 @@ main :: IO()
 main = simulate
   window
   white
-  100
+  10
   (RobotArm [Link 100 90, Link 100 35])
   drawArm
   updateArm
