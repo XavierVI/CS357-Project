@@ -58,24 +58,27 @@ drawArm (RobotArm links) = Line ((0, 0) : [(x, y) | (x, y) <- points])
 updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
 updateArm _ dt (RobotArm links) = RobotArm updatedLinks
   where
-    desiredAngles = ik links  (-60, 128.06248)
-    -- updatedLinks  = zipWith updateAngleGD links desiredAngles
-    updatedLinks = newtonRaphson links (0, 200)
+    currAngles    = [ a | Link _ a <- links ]
+    desiredAngles = [ a | Link _ a <- ikNewtonRaphson links (0, 200) 500]
+    updatedLinks = zipWith updateAngle links desiredAngles
 
 
 -- redraws the arm with a new angle for each joint using gradient descent
 updateArmGD :: ViewPort -> Float -> RobotArm -> RobotArm
-updateArmGD _ dt (RobotArm links) = RobotArm updatedLinks
+updateArmGD _ dt (RobotArm links)
+  | abs(loss target links) > tolerance = RobotArm updatedLinks
+  | otherwise = RobotArm links
   where
-    learningRate = 0.01
+    tolerance = 0.5
+    learningRate = 0.09
     target       = (0, 200)
     grad         = gradient (loss target) links
-    updatedLinks = zipWith updateLinkAngle [links !! 0, links !! 1] grad
-    updateLinkAngle (Link len angle) grad = Link len (angle - learningRate * grad)
+    updatedLinks = zipWith updateLinkAngle links grad
+    updateLinkAngle (Link len angle) g = Link len (angle - learningRate * g)
 
 
 {-------------------------------------------------------------
-  Mathematical functions
+  Math functions
 
 --------------------------------------------------------------}
 
@@ -97,6 +100,10 @@ fk links = (x, y)
     x = position cos links
     y = position sin links
 
+ikNewtonRaphson :: [Link] -> Point -> Int -> [Link]
+ikNewtonRaphson links _ 0 = links
+ikNewtonRaphson links p n = ikNewtonRaphson (newtonRaphson links p) p (n-1)
+
 -- returns the joint angles required for the desired position in radians
 ik :: [Link] -> Point -> [Float]
 ik links (x, y) = [a1', a2']
@@ -106,22 +113,24 @@ ik links (x, y) = [a1', a2']
     gamma = atan2 y x
     alpha = acos ( clamp ((x**2 + y**2 + l1**2 - l2**2) / (2*l1*sqrt(x**2 + y**2)) ))
     beta  = acos ( clamp ((x**2 + y**2 - l1**2 - l2**2) / 2*(l1*l2)))
-    a1' = gamma + alpha
-    a2' = beta - pi
+    a1' = gamma - alpha
+    a2' = pi - beta
 
 -- Helper function to clamp values for acos
 clamp :: Float -> Float
 clamp val = max (-1) (min 1 val)
 
+
 -- updates the angles for a link, a' should be passed in radians
-updateAngleGD :: Link -> Float -> Link
-updateAngleGD (Link l a) a'
-  | abs (a' - a) > tolerance = Link l (radToDeg updatedAngle)
+updateAngle :: Link -> Float -> Link
+updateAngle (Link l a) a'
+  | abs (a' - degToRad a) > tolerance = Link l (radToDeg updatedAngle)
   | otherwise               = Link l a
   where
     tolerance     = (5.0 * pi) / 180
     step          = (1.0 * pi) / 180
     updatedAngle  = degToRad a + signum (a' - degToRad a) * step
+
 
 
 loss :: Point -> [Link] -> Float
@@ -139,14 +148,12 @@ loss (xd, yd) links = sqrt ( (term1**2) + (term2**2) )
   derivative at.
 
  -}
-
-
 gradient :: ([Link] -> Float) -> [Link] -> [Float]
 gradient f links = [partial1, partial2]
   where
     Link l1 a1 = head links
     Link l2 a2 = links !! 1
-    h          = 0.001
+    h          = 0.0001
     t1         = f [Link l1 a1,     Link l2 a2    ]
     t1'        = f [Link l1 (a1+h), Link l2 a2    ]
     t2         = f [Link l1 a1,     Link l2 a2    ]
