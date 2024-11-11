@@ -1,19 +1,20 @@
 import Graphics.Gloss
 import Arm ( RobotArm(RobotArm), Link(Link), drawArm, updateArm, updateArmGD )
-import Graphics.Gloss.Data.ViewPort
+import Box ( Box(Box), drawBox, constructBox )
+import Graphics.Gloss.Data.ViewPort ()
 
 window :: Display
-window = InWindow "Nice Window" (800, 800) (50, 50)
+window = InWindow "Window" (800, 800) (50, 50)
 
 main :: IO()
--- main = display window white (drawArm (RobotArm [Link 100 90, Link 50 45, Link 100 90]))
-main = simulate
-  window
-  white
-  1000
-  (RobotArm [Link 100 90, Link 100 (-90)])
-  drawArm
-  updateArmGD
+main = display window white (drawBox (constructBox 50 50))
+-- main = simulate
+--   window
+--   white
+--   60
+--   (RobotArm [Link 100 90, Link 100 (-90)])
+--   drawArm
+--   updateArm
 
 
 {- 
