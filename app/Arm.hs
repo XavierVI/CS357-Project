@@ -55,8 +55,9 @@ drawArm (RobotArm links) = Line ((0, 0) : [(x, y) | (x, y) <- points])
   where
     points = generatePoints links (0,0)
 
-updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
-updateArm _ dt (RobotArm links) = RobotArm updatedLinks
+-- updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
+updateArm :: Float -> RobotArm -> RobotArm
+updateArm dt (RobotArm links) = RobotArm updatedLinks
   where
     currAngles    = [ a | Link _ a <- links ]
     desiredAngles = [ a | Link _ a <- ikNewtonRaphson links (0, 200) 500]

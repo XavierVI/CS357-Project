@@ -26,8 +26,9 @@ The box is drawn as a polygon
 drawBox :: Box -> Picture
 drawBox (Box size points mass) = Polygon points
 
-updateBoxPosition :: ViewPort -> Float -> Box -> Box
-updateBoxPosition _ dt (Box size points mass) = Box size (rotateBoxPts points (pi/4)) mass
+-- updateBoxPosition :: ViewPort -> Float -> Box -> Box
+updateBoxPosition :: Float -> Box -> Box
+updateBoxPosition dt (Box size points mass) = Box size (rotateBoxPts points (pi/4)) mass
 
 translateBoxPts :: [Point] -> Float -> Float -> [Point]
 translateBoxPts points dx dy = [ (x+dx, y+dy) | (x,y) <- points]

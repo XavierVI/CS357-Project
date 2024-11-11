@@ -1,7 +1,7 @@
 import Graphics.Gloss
 import Arm ( RobotArm(RobotArm), Link(Link), drawArm, updateArm, updateArmGD )
 import Box ( Box(Box), drawBox, constructBox, updateBoxPosition )
-import Graphics.Gloss.Data.ViewPort ()
+import Graphics.Gloss.Data.ViewPort (ViewPort)
 
 data Sim = Sim RobotArm Box
 
@@ -16,11 +16,11 @@ box = constructBox 30 50
 
 
 
-drawSim :: RobotArm -> Box -> Picture
-drawSim arm box = Pictures [drawArm arm, drawBox box]
+drawSim :: Sim -> Picture
+drawSim (Sim arm box) = Pictures [drawArm arm, drawBox box]
 
 updateSim :: ViewPort -> Float -> Sim -> Sim
-updateSim _ dt (Sim RobotArm links Box size points mass) = undefined
+updateSim _ dt (Sim arm box) = Sim (updateArm dt arm) (updateBoxPosition dt box)
 
 main :: IO()
 main = simulate
@@ -28,6 +28,10 @@ main = simulate
   white
   60
   (Sim arm box)
-  (drawSim arm box)
+  drawSim
   updateSim
+
+
+
+
 
