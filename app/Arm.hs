@@ -13,9 +13,8 @@ import Graphics.Gloss.Data.ViewPort (ViewPort)
 -- Model of the arm [Link length angle]
 data Link = Link Float Float
   deriving (Show)
-data RobotArm = RobotArm [Link]
+data RobotArm = RobotArm [Link] Point
   deriving (Show)
-
 
 {---------------------------------------------------------------------
   - These functions are used to display the arm in the window
@@ -51,28 +50,28 @@ drawLink (Link linkLength angle) (x, y) = endPoint
     endPoint = (x+x', y+y')
 
 drawArm :: RobotArm -> Picture
-drawArm (RobotArm links) = Line ((0, 0) : [(x, y) | (x, y) <- points])
+drawArm (RobotArm links _) = Line ((0, 0) : [(x, y) | (x, y) <- points])
   where
     points = generatePoints links (0,0)
 
 -- updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
 updateArm :: Float -> RobotArm -> RobotArm
-updateArm dt (RobotArm links) = RobotArm updatedLinks
+updateArm dt (RobotArm links target) = RobotArm updatedLinks target
   where
     currAngles    = [ a | Link _ a <- links ]
-    desiredAngles = [ a | Link _ a <- ikNewtonRaphson links (0, 200) 500]
+    -- desiredAngles = [ a | Link _ a <- ikNewtonRaphson links target 20]
+    desiredAngles = ik links target
     updatedLinks = zipWith updateAngle links desiredAngles
 
 
 -- redraws the arm with a new angle for each joint using gradient descent
-updateArmGD :: ViewPort -> Float -> RobotArm -> RobotArm
-updateArmGD _ dt (RobotArm links)
-  | abs(loss target links) > tolerance = RobotArm updatedLinks
-  | otherwise = RobotArm links
+updateArmGD :: Float -> RobotArm -> RobotArm
+updateArmGD dt (RobotArm links target)
+  | abs(loss target links) > tolerance = RobotArm updatedLinks target
+  | otherwise = RobotArm links target
   where
     tolerance = 0.5
     learningRate = 0.09
-    target       = (0, 200)
     grad         = gradient (loss target) links
     updatedLinks = zipWith updateLinkAngle links grad
     updateLinkAngle (Link len angle) g = Link len (angle - learningRate * g)
@@ -107,30 +106,32 @@ ikNewtonRaphson links p n = ikNewtonRaphson (newtonRaphson links p) p (n-1)
 
 -- returns the joint angles required for the desired position in radians
 ik :: [Link] -> Point -> [Float]
-ik links (x, y) = [a1', a2']
+ik links (x, y) = [radToDeg q1, radToDeg q2]
   where
     Link l1 a1 = head links
     Link l2 a2 = links !! 1
     gamma = atan2 y x
-    alpha = acos ( clamp ((x**2 + y**2 + l1**2 - l2**2) / (2*l1*sqrt(x**2 + y**2)) ))
-    beta  = acos ( clamp ((x**2 + y**2 - l1**2 - l2**2) / 2*(l1*l2)))
-    a1' = gamma - alpha
-    a2' = pi - beta
+    distSquared = x**2 + y**2
+    -- calculate joint angles
+    q2 = - acos (clamp ((distSquared - l1**2 - l2**2) / (2*l1*l2)))
+    s2 = l2 * sin q2
+    c2 = l2 * cos q2
+    q1 = gamma - atan (s2 / (l1 + c2))
 
 -- Helper function to clamp values for acos
 clamp :: Float -> Float
 clamp val = max (-1) (min 1 val)
 
 
--- updates the angles for a link, a' should be passed in radians
+-- updates the angles for a link
 updateAngle :: Link -> Float -> Link
 updateAngle (Link l a) a'
-  | abs (a' - degToRad a) > tolerance = Link l (radToDeg updatedAngle)
-  | otherwise               = Link l a
+  | abs (a' - a) > tolerance = Link l updatedAngle
+  | otherwise                = Link l a
   where
-    tolerance     = (5.0 * pi) / 180
-    step          = (1.0 * pi) / 180
-    updatedAngle  = degToRad a + signum (a' - degToRad a) * step
+    tolerance     = 0.5
+    step          = 0.5
+    updatedAngle  = a + signum (a' - a) * step
 
 
 
@@ -175,10 +176,10 @@ newtonRaphson links (xd, yd)
   | sqrt( e1**2 + e2**2 ) > tolerance = updatedLinks
   | otherwise = links
   where
-    tolerance = 10.0
+    tolerance = 0.001
     Link l1 a1 = head links
     Link l2 a2 = links !! 1
-    j   = jacobian links
+    j        = jacobian links
     (x0, y0) = fk links
     (e1, e2) = (xd-x0, yd-y0)
     a1' = a1 + (head j * e1)
