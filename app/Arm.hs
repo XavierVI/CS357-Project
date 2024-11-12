@@ -58,7 +58,6 @@ drawArm (RobotArm links _) = Line ((0, 0) : [(x, y) | (x, y) <- points])
 updateArm :: Float -> RobotArm -> RobotArm
 updateArm dt (RobotArm links target) = RobotArm updatedLinks target
   where
-    currAngles    = [ a | Link _ a <- links ]
     -- desiredAngles = [ a | Link _ a <- ikNewtonRaphson links target 20]
     desiredAngles = ik links target
     updatedLinks = zipWith updateAngle links desiredAngles

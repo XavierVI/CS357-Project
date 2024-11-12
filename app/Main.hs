@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 import Graphics.Gloss
 import Arm ( RobotArm(RobotArm), Link(Link), drawArm, updateArm, updateArmGD )
 import Box ( Box(Box), drawBox, constructBox, updateBoxPosition )
@@ -27,8 +28,24 @@ updateSim :: Float -> Sim -> Sim
 updateSim dt (Sim arm box) = Sim (updateArm dt arm) (updateBoxPosition dt box)
 
 inputHandler :: Event -> Sim -> Sim
+inputHandler 
+  (EventKey (SpecialKey KeyUp) Down _ _)
+  (Sim (RobotArm links (x, y)) box) =
+    Sim (RobotArm links (x, y+10)) box
+inputHandler
+  (EventKey (SpecialKey KeyDown) Down _ _)
+  (Sim (RobotArm links (x, y)) box) =
+    Sim (RobotArm links (x, y-10)) box
+inputHandler
+  (EventKey (SpecialKey KeyLeft) Down _ _)
+  (Sim (RobotArm links (x, y)) box) =
+    Sim (RobotArm links (x-10, y)) box
+inputHandler 
+  (EventKey (SpecialKey KeyRight) Down _ _)
+  (Sim (RobotArm links (x, y)) box) =
+    Sim (RobotArm links (x+10, y)) box
 inputHandler event sim = sim
--- inputHandler (EventKey (SpecialKey KeyUp) Down _ _) sim = sim
+
 
 main :: IO()
 main = play
