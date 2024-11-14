@@ -3,7 +3,7 @@ module Arm where
 
 import Graphics.Gloss
 import Graphics.Gloss.Geometry.Angle
-import Graphics.Gloss.Data.ViewPort (ViewPort)
+-- import Graphics.Gloss.Data.ViewPort (ViewPort)
 
 {-----------------------------------------------------------------
   This file is going to be where we define the model of the arm and functions to draw/move the arm in the window.
@@ -55,8 +55,8 @@ drawArm (RobotArm links _) = Line ((0, 0) : [(x, y) | (x, y) <- points])
     points = generatePoints links (0,0)
 
 -- updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
-updateArm :: Float -> RobotArm -> RobotArm
-updateArm dt (RobotArm links target) = RobotArm updatedLinks target
+updateArm :: Float -> RobotArm -> (RobotArm, Point)
+updateArm dt (RobotArm links target) = (RobotArm updatedLinks target, fk updatedLinks)
   where
     -- desiredAngles = [ a | Link _ a <- ikNewtonRaphson links target 20]
     desiredAngles = ik links target
