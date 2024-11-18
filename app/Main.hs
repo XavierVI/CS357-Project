@@ -1,11 +1,11 @@
 import Graphics.Gloss
 import Code
 import Arm
-import Gravity
+import Force
 
 main :: IO()
 --main = display window white (displayArm (RobotArm [Link 100 90, Link 50 45, Link 100 90]))
-main = simulate FullScreen white 24 initialObject objectToPicture (update objectToObject)
+main = simulate FullScreen white 24 initialBox modelToPicture (update modelToModel)
 
 update f vp fn state = f state
     
