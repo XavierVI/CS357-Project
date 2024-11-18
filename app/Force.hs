@@ -11,13 +11,13 @@ data Velocity = Velocity {vx :: Float, vy :: Float}
 data Model = Model {getVelocity :: Velocity, getPostition :: Position, getObject :: Object, getMass :: Float}
     deriving (Show)
 
+-- Sum type to hold the object in question currently just a box
 data Object = Box Float Float
     deriving (Show)
 
---data State :: [Model]
-
-objectToPicture :: Object -> Path
-objectToPicture (Box w l) = [(w,l),(-w,l),(-w,-l),(w,-l)]
+-- Convert object withn the Model into a picture currently just the Box but more rendering could be possible
+objectToPicture :: Object -> Picture
+objectToPicture (Box w l) = Polygon [(w,l),(-w,l),(-w,-l),(w,-l)]
 
 initialVelocity :: Velocity
 initialVelocity = Velocity 0 0
@@ -28,6 +28,8 @@ initialPosition = Position 0 0
 initialBox :: Model
 initialBox = Model initialVelocity initialPosition (Box 25 25) 50
 
+-- Currently doesn't work because haskell doesn't like [Model]
+--State :: [Model]
 {-initalState :: State
 initalState = [initialBox,adjustedBox]
     where
@@ -41,9 +43,10 @@ modelToPicture = toPicture
                 x = px $ getPostition model
                 y = py $ getPostition model
                 o = getObject model
-            in Translate x y (Polygon $ objectToPicture o)
+            in Translate x y $ objectToPicture o
 
 
+-- Model -> Model function currently just applies gravity and velocity
 modelToModel :: Model -> Model
 modelToModel = next
     where
@@ -55,21 +58,6 @@ modelToModel = next
             np = p {px = px p + vx v, py = py p + vy v}
             g = 1
             in Model {getVelocity = nv, getPostition = np, getObject = getObject model, getMass = getMass model } 
+            --                                               shouldn't have to do this, but it crashed without it
         
         
-
-{-
-
-
-objectToObject :: Object -> Object
-objectToObject = map next 
-  where 
-    next (vx,vy,x,y,w,l,m)  = (nvx, nvy, x + vx, ny, w, l, m)
-      where
-        nvx = vx     -- * 0.98 -- Basic air resistance type thing
-        nvy = vy - g
-        ny = y + nvy
-        g = 1  
-
-
--}
