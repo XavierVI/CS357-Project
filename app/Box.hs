@@ -1,4 +1,4 @@
-module Box where
+module Box (Box(..), drawBox, constructBox, updateBoxPosition, boundaryCheck) where
 
 import Graphics.Gloss
 -- import Graphics.Gloss.Data.ViewPort (ViewPort)
@@ -12,11 +12,11 @@ import Graphics.Gloss.Geometry.Angle (degToRad)
 
 -- Box   = [(x, y)] mass
 -- the list contains the coordinates of each corner of the box
-data Box = Box Float [Point] Float
+data Box = Box Float [Point] Float Point
 
 constructBox :: Float -> Float -> Float -> Box
 constructBox size mass offset =
-  Box size [(offset,0), (size+offset, 0), (size+offset, size), (offset, size)] mass
+    Box size [(offset, 0), (size + offset, 0), (size + offset, size), (offset, size)] mass (0, 0)
 
 {-
 Returns the visual representation of the box
@@ -25,22 +25,35 @@ The box is drawn as a polygon
 
 -}
 drawBox :: Box -> Picture
-drawBox (Box size points mass) = Polygon points
+drawBox (Box _ points _ _) = Color (makeColorI 170 20 255 255) (Polygon points)
 
--- updateBoxPosition :: ViewPort -> Float -> Box -> Box
 updateBoxPosition :: Float -> Point -> Box -> Box
-updateBoxPosition dt eePos (Box size points mass) = 
-  if boundaryCheck eePos points
-  then Box size newPoints mass
-  else Box size points mass
+updateBoxPosition pushDist (ex, ey) (Box size points mass velocity) =
+    Box size newPoints mass velocity
   where
-    -- instead of dt, we can use some force measurement
-    newPoints = translateBoxPts points dt 0
+    -- Calculate the direction vector from the box's center to the end-effector
+    (bx, by) = averagePoint points
+    direction = normalize (bx - ex, by - ey) -- Reverse the direction for pushing motion
 
+    -- Move the box in the direction of the push by a fixed distance
+    (dx, dy) = scaleVector pushDist direction
+    newPoints = translateBoxPts points dx dy
 
+    -- Helpers
+    normalize (x, y) = let len = max (sqrt (x * x + y * y)) 0.001 in (x / len, y / len)
+    scaleVector scalar (x, y) = (scalar * x, scalar * y)
+
+    averagePoint :: [Point] -> Point
+    averagePoint pts = (avgX, avgY)
+      where
+        (sumX, sumY) = foldl (\(sx, sy) (x, y) -> (sx + x, sy + y)) (0, 0) pts
+        n = fromIntegral (length pts)
+        avgX = sumX / n
+        avgY = sumY / n
+
+-- Translates all points of a box by dx and dy
 translateBoxPts :: [Point] -> Float -> Float -> [Point]
-translateBoxPts points dx dy = [ (x+dx, y+dy) | (x,y) <- points]
-
+translateBoxPts points dx dy = [ (x + dx, y + dy) | (x, y) <- points ]
 
 rotateBoxPts :: [Point] -> Float -> [Point]
 rotateBoxPts points angleDeg = [ rotate pt | pt <- points ]

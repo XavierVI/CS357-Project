@@ -50,9 +50,26 @@ drawLink (Link linkLength angle) (x, y) = endPoint
     endPoint = (x+x', y+y')
 
 drawArm :: RobotArm -> Picture
-drawArm (RobotArm links _) = Line ((0, 0) : [(x, y) | (x, y) <- points])
+drawArm (RobotArm links _) = Pictures [thickSegments, Pictures (map jointPicture points)]
   where
-    points = generatePoints links (0,0)
+    points = generatePoints links (0, 0)
+    thickSegments = Pictures $ zipWith drawThickSegment points (tail points)
+    jointPicture (x, y) = Translate x y (Color green (ThickCircle 0 5))  -- Joints visualization
+
+-- Draw a segment between two points
+drawThickSegment :: Point -> Point -> Picture
+drawThickSegment (x1, y1) (x2, y2) = Color black $ Polygon [p1, p2, p4, p3]
+  where
+    thickness = 5  -- Thickness of the arm
+    dx = x2 - x1
+    dy = y2 - y1
+    len = sqrt (dx * dx + dy * dy)
+    perpX = (dy / len) * (thickness / 2)  -- Perpendicular vector for width
+    perpY = -(dx / len) * (thickness / 2)
+    p1 = (x1 + perpX, y1 + perpY)
+    p2 = (x1 - perpX, y1 - perpY)
+    p3 = (x2 + perpX, y2 + perpY)
+    p4 = (x2 - perpX, y2 - perpY)
 
 -- updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
 updateArm :: Float -> RobotArm -> (RobotArm, Point)
@@ -131,7 +148,6 @@ updateAngle (Link l a) a'
     tolerance     = 0.5
     step          = 0.5
     updatedAngle  = a + signum (a' - a) * step
-
 
 
 loss :: Point -> [Link] -> Float

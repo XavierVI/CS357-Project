@@ -1,5 +1,9 @@
 ## About
-
+-Thickened lines
+-Added point markers at joints of the arm
+-Drew box
+-Added collision detection
+-Box can now be pushed around smoothly
 
 
 ## Installing gloss package
