@@ -73,24 +73,16 @@ drawThickSegment (x1, y1) (x2, y2) = Color black $ Polygon [p1, p2, p4, p3]
 
 -- updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
 updateArm :: Float -> RobotArm -> (RobotArm, Point)
-updateArm dt (RobotArm links target) = (RobotArm updatedLinks target, fk updatedLinks)
+updateArm dt (RobotArm links (xd, yd)) =
+  -- if the y-coodinate is below the ground, then return
+  -- the current position
+  if yd < 0 then (RobotArm links (xd, yd), fk links)
+  else (RobotArm updatedLinks target, fk updatedLinks)
   where
-    -- desiredAngles = [ a | Link _ a <- ikNewtonRaphson links target 20]
+    target        = (xd, yd)
     desiredAngles = ik links target
-    updatedLinks = zipWith updateAngle links desiredAngles
+    updatedLinks  = zipWith updateAngle links desiredAngles
 
-
--- redraws the arm with a new angle for each joint using gradient descent
-updateArmGD :: Float -> RobotArm -> RobotArm
-updateArmGD dt (RobotArm links target)
-  | abs(loss target links) > tolerance = RobotArm updatedLinks target
-  | otherwise = RobotArm links target
-  where
-    tolerance = 0.5
-    learningRate = 0.09
-    grad         = gradient (loss target) links
-    updatedLinks = zipWith updateLinkAngle links grad
-    updateLinkAngle (Link len angle) g = Link len (angle - learningRate * g)
 
 
 {-------------------------------------------------------------
@@ -116,9 +108,6 @@ fk links = (x, y)
     x = position cos links
     y = position sin links
 
-ikNewtonRaphson :: [Link] -> Point -> Int -> [Link]
-ikNewtonRaphson links _ 0 = links
-ikNewtonRaphson links p n = ikNewtonRaphson (newtonRaphson links p) p (n-1)
 
 -- returns the joint angles required for the desired position in radians
 ik :: [Link] -> Point -> [Float]
@@ -148,58 +137,3 @@ updateAngle (Link l a) a'
     tolerance     = 0.5
     step          = 0.5
     updatedAngle  = a + signum (a' - a) * step
-
-
-loss :: Point -> [Link] -> Float
-loss (xd, yd) links = sqrt ( (term1**2) + (term2**2) )
-  where
-    term1 = xd - position cos links
-    term2 = yd - position sin links
-
-
-{- 
-  The gradient takes a scalar valued function and returns a vector of the
-  partial derivative of the function over each parameter.
-
-  These parameters are determined by the point we are evaluating each partial
-  derivative at.
-
- -}
-gradient :: ([Link] -> Float) -> [Link] -> [Float]
-gradient f links = [partial1, partial2]
-  where
-    Link l1 a1 = head links
-    Link l2 a2 = links !! 1
-    h          = 0.0001
-    t1         = f [Link l1 a1,     Link l2 a2    ]
-    t1'        = f [Link l1 (a1+h), Link l2 a2    ]
-    t2         = f [Link l1 a1,     Link l2 a2    ]
-    t2'        = f [Link l1 a1,     Link l2 (a2+h)]
-    partial1   = (t1' - t1) / h
-    partial2   = (t2' - t2) / h
-
-
-jacobian :: [Link] -> [Float]
-jacobian links = [a1', a2']
-  where
-    a1' = sum (gradient (position cos) links)
-    a2' = sum (gradient (position sin) links)
-
-
-newtonRaphson :: [Link] -> Point -> [Link]
-newtonRaphson links (xd, yd)
-  | sqrt( e1**2 + e2**2 ) > tolerance = updatedLinks
-  | otherwise = links
-  where
-    tolerance = 0.001
-    Link l1 a1 = head links
-    Link l2 a2 = links !! 1
-    j        = jacobian links
-    (x0, y0) = fk links
-    (e1, e2) = (xd-x0, yd-y0)
-    a1' = a1 + (head j * e1)
-    a2' = a2 + (j !! 1 * e2)
-    updatedLinks = [Link l1 a1', Link l2 a2']
-
-
-
