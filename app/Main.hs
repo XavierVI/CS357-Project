@@ -8,7 +8,7 @@ data Sim = Sim RobotArm Box Bool [SpecialKey]
 
 
 window :: Display
-window = InWindow "Window" (900, 800) (50, 50)
+window = InWindow "Robot Arm Simulator" (900, 800) (50, 50)
 
 initialArm :: RobotArm
 initialArm = RobotArm [Link 100 78.27139, Link 100 (-73.63233)] (120, 106)
@@ -21,7 +21,7 @@ drawSim :: Sim -> Picture
 drawSim (Sim arm box _ _) = Pictures [drawArm arm, drawBox box, floorPic]
   where
     -- base = translate 0 (-25) $ color (greyN 0.5) $ rectangleSolid 50 50
-    floorPic = translate 0 (-25) $ color (greyN 0.5) $ rectangleSolid 800 50
+    floorPic = translate 0 (-200) $ color (greyN 0.5) $ rectangleSolid 900 400
 
 
 updateSim :: Float -> Sim -> Sim
@@ -75,7 +75,7 @@ inputHandler event sim = sim
 main :: IO()
 main = play
   window -- display
-  (makeColorI 220 220 220 10)  -- window color
+  (makeColorI 195 195 195 10)  -- window color
   60     -- number of simulation steps to take each second
   (Sim initialArm initialBox False []) -- initial state
   drawSim      -- function to draw the objects in the simulation
