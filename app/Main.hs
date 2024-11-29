@@ -24,10 +24,17 @@ initialBox = constructBox 30 50 120
 
 
 drawSim :: Sim -> Picture
-drawSim (Sim arm box _ _ _ _) = Pictures [drawBox box, drawArm arm, floorPic]
+drawSim (Sim arm box _ _ _ _) = Pictures [
+    drawBox box, drawArm arm, floorPic,
+    renderText "Controls: " (-300) 300,
+    renderText "- Arrow keys to move the arm" (-300) 270,
+    renderText "- Space bar to grip the box" (-300) 240,
+    renderText "- Enter to reset the simulation" (-300) 210
+  ]
   where
     -- base = translate 0 (-25) $ color (greyN 0.5) $ rectangleSolid 50 50
     floorPic = translate 0 (-200) $ color (greyN 0.5) $ rectangleSolid 900 400
+    renderText t xPos yPos = Translate xPos yPos $ Scale 0.2 0.2 $ Text t
 
 
 updateSim :: Float -> Sim -> Sim
@@ -73,7 +80,7 @@ updateEEPositionFromKeys (RobotArm links (x,  y)) boxPoints keys
 
 
 inputHandler :: Event -> Sim -> Sim
-inputHandler (EventKey (SpecialKey KeySpace) Down _ _) _ =
+inputHandler (EventKey (SpecialKey KeyEnter) Down _ _) _ =
     Sim initialArm initialBox False [] False (0, 0) -- Reset simulation to initial state
 
 {- This input handler will check if the end effector is close to the box and
@@ -82,7 +89,7 @@ inputHandler (EventKey (SpecialKey KeySpace) Down _ _) _ =
 
 -}
 inputHandler 
-  (EventKey (SpecialKey KeyEnter) Down _ _)
+  (EventKey (SpecialKey KeySpace) Down _ _)
   (Sim arm box isPushed keys isGripped prevPos) =
     if boundaryCheck eePos points
     then Sim arm box isPushed keys (not isGripped) prevPos
