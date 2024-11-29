@@ -17,7 +17,7 @@ initialBox = constructBox 30 50 120
 
 
 drawSim :: Sim -> Picture
-drawSim (Sim arm box _ _ _) = Pictures [drawArm arm, drawBox box, floorPic]
+drawSim (Sim arm box _ _ _) = Pictures [drawBox box, drawArm arm, floorPic]
   where
     -- base = translate 0 (-25) $ color (greyN 0.5) $ rectangleSolid 50 50
     floorPic = translate 0 (-200) $ color (greyN 0.5) $ rectangleSolid 900 400
@@ -29,7 +29,7 @@ updateSim dt (Sim arm box isPushed keys isGripped)
     Sim newArm (updateBoxPosition pushDist eePos box) True keys isGripped
   -- Push once and set flag
   | not isPushed && boundaryCheck eePos boxPoints 
-    = Sim newArm (updateBoxPosition pushDist eePos box) True keys isGripped
+    = Sim arm (updateBoxPosition pushDist eePos box) True keys isGripped
   -- Reset flag when contact ends
   | otherwise = Sim newArm box (boundaryCheck eePos boxPoints) keys isGripped
   where

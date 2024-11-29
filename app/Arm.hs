@@ -50,17 +50,32 @@ drawLink (Link linkLength angle) (x, y) = endPoint
     endPoint = (x+x', y+y')
 
 drawArm :: RobotArm -> Picture
-drawArm (RobotArm links _) = Pictures [thickSegments, Pictures (map jointPicture points)]
+drawArm (RobotArm links _) = Pictures [thickSegments, Pictures (map jointPicture points), gripper]
   where
     points = generatePoints links (0, 0)
-    thickSegments = Pictures $ zipWith drawThickSegment points (tail points)
+    thickSegments = Pictures $ zipWith (drawThickSegment 10 black) points (tail points)
     jointPicture (x, y) = Translate x y (Color (makeColor 0.4 0.4 0.4 1) (ThickCircle 0 15))  -- Joints visualization
+    lastPt = last points
+    gripper = Pictures (drawGripper lastPt)
+    
+drawGripper :: Point -> [Picture]
+drawGripper (x, y) = [jointLink, gripperIndicator, threeDBar]
+  where
+    (x0, y0) = (x+7, y)
+    (xf, yf) = (x0+4, y0)
+    jointLink = drawThickSegment 8 black (x0, y0) (xf, yf)
+
+    gripperIndicator = drawThickSegment 4 red (x0, y0+4) (xf, yf+4)
+    
+    (xu, yu) = (xf, yf)
+    (xu', yu') = (xf+12, yf)
+    threeDBar = drawThickSegment 10 (makeColor 0.1 0.1 0.1 1) (xu, yu) (xu', yu')
 
 -- Draw a segment between two points
-drawThickSegment :: Point -> Point -> Picture
-drawThickSegment (x1, y1) (x2, y2) = Color black $ Polygon [p1, p2, p4, p3]
+drawThickSegment :: Float -> Color -> Point -> Point -> Picture
+drawThickSegment thickness c (x1, y1) (x2, y2) = Color c $ Polygon [p1, p2, p4, p3]
   where
-    thickness = 10  -- Thickness of the arm
+    -- thickness = 10  -- Thickness of the arm
     dx = x2 - x1
     dy = y2 - y1
     len = sqrt (dx * dx + dy * dy)
@@ -70,6 +85,8 @@ drawThickSegment (x1, y1) (x2, y2) = Color black $ Polygon [p1, p2, p4, p3]
     p2 = (x1 - perpX, y1 - perpY)
     p3 = (x2 + perpX, y2 + perpY)
     p4 = (x2 - perpX, y2 - perpY)
+    
+
 
 -- updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
 updateArm :: Float -> RobotArm -> (RobotArm, Point)
