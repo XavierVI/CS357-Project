@@ -54,10 +54,10 @@ updateBoxPosition pushDist (ex, ey) (Box size points mass velocity) =
 -- Translates all points of a box by dx and dy
 translateBoxPts :: [Point] -> Float -> Float -> [Point]
 translateBoxPts points dx dy =
-  if all (allFunc dy) points then [ (x + dx, y + dy) | (x, y) <- points ]
+  if all condition points then [ (x + dx, y + dy) | (x, y) <- points ]
   else points
   where
-    allFunc dp (px, py) = (py + dp) >= -1
+    condition (px, py) = (py + dy) >= -1
 
 rotateBoxPts :: [Point] -> Float -> [Point]
 rotateBoxPts points angleDeg = [ rotate pt | pt <- points ]

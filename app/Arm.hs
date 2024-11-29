@@ -54,13 +54,13 @@ drawArm (RobotArm links _) = Pictures [thickSegments, Pictures (map jointPicture
   where
     points = generatePoints links (0, 0)
     thickSegments = Pictures $ zipWith drawThickSegment points (tail points)
-    jointPicture (x, y) = Translate x y (Color green (ThickCircle 0 5))  -- Joints visualization
+    jointPicture (x, y) = Translate x y (Color (makeColor 0.4 0.4 0.4 1) (ThickCircle 0 15))  -- Joints visualization
 
 -- Draw a segment between two points
 drawThickSegment :: Point -> Point -> Picture
 drawThickSegment (x1, y1) (x2, y2) = Color black $ Polygon [p1, p2, p4, p3]
   where
-    thickness = 5  -- Thickness of the arm
+    thickness = 10  -- Thickness of the arm
     dx = x2 - x1
     dy = y2 - y1
     len = sqrt (dx * dx + dy * dy)
