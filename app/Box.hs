@@ -1,18 +1,19 @@
-module Box (Box(..), drawBox, constructBox, updateBoxPosition, boundaryCheck, strictBoundaryCheck) where
+module Box where
 
 import Graphics.Gloss
--- import Graphics.Gloss.Data.ViewPort (ViewPort)
 import Graphics.Gloss.Geometry.Angle (degToRad)
 
 {- 
   This file defines the box in the simulation and the functions used to move it.
-
  -}
 
 
--- Box   = [(x, y)] mass
--- the list contains the coordinates of each corner of the box
-data Box = Box Float [Point] Float Point
+data Box = Box {
+  boxSize :: Float,
+  boxEndPoints :: [Point],
+  boxMass :: Float,
+  boxVelocity :: Point
+}
 
 constructBox :: Float -> Float -> Float -> Box
 constructBox size mass offset =
@@ -50,6 +51,11 @@ updateBoxPosition pushDist (ex, ey) (Box size points mass velocity) =
         n = fromIntegral (length pts)
         avgX = sumX / n
         avgY = sumY / n
+
+moveGrippedBox :: Point -> Box -> Box
+moveGrippedBox (dx, dy) (Box size endPoints mass velocity) = Box size newEndPoints mass velocity
+  where
+    newEndPoints = [ (x+dx, y+dy) | (x, y) <- endPoints]
 
 -- Translates all points of a box by dx and dy
 translateBoxPts :: [Point] -> Float -> Float -> [Point]

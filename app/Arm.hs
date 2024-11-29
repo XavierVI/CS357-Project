@@ -11,9 +11,9 @@ import Graphics.Gloss.Geometry.Angle
 ------------------------------------------------------------------}
 
 -- Model of the arm [Link length angle]
-data Link = Link Float Float
+data Link = Link { length :: Float, jointAngle :: Float }
   deriving (Show)
-data RobotArm = RobotArm [Link] Point
+data RobotArm = RobotArm { links :: [Link], eePos :: Point }
   deriving (Show)
 
 {---------------------------------------------------------------------
