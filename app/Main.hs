@@ -1,6 +1,6 @@
 import Graphics.Gloss
 import Arm ( RobotArm(RobotArm), Link(Link), drawArm, updateArm )
-import Box (Box(Box), drawBox, constructBox, updateBoxPosition, boundaryCheck)
+import Box (Box(Box), drawBox, constructBox, updateBoxPosition, boundaryCheck, strictBoundaryCheck)
 import Graphics.Gloss.Interface.Pure.Game
 
 data Sim = Sim RobotArm Box Bool [SpecialKey] Bool
@@ -25,16 +25,14 @@ drawSim (Sim arm box _ _ _) = Pictures [drawBox box, drawArm arm, floorPic]
 
 updateSim :: Float -> Sim -> Sim
 updateSim dt (Sim arm box isPushed keys isGripped)
-  | isGripped =
-    Sim newArm (updateBoxPosition pushDist eePos box) True keys isGripped
   -- Push once and set flag
   | not isPushed && boundaryCheck eePos boxPoints 
-    = Sim arm (updateBoxPosition pushDist eePos box) True keys isGripped
+    = Sim newArm (updateBoxPosition pushDist eePos box) True keys isGripped
   -- Reset flag when contact ends
   | otherwise = Sim newArm box (boundaryCheck eePos boxPoints) keys isGripped
   where
     -- Update the arm and get the end-effector position
-    (newArm, eePos) = updateArm dt (updateEEPositionFromKeys arm keys)
+    (newArm, eePos) = updateArm dt (updateEEPositionFromKeys arm boxPoints keys)
 
     -- Extract box points for collision check
     Box _ boxPoints _ _ = box
@@ -42,8 +40,10 @@ updateSim dt (Sim arm box isPushed keys isGripped)
     -- Fixed push distance
     pushDist = 5 -- Push distance
 
-updateEEPositionFromKeys :: RobotArm -> [SpecialKey] -> RobotArm
-updateEEPositionFromKeys (RobotArm links (x,  y)) keys = RobotArm links (newX, newY)
+updateEEPositionFromKeys :: RobotArm -> [Point] -> [SpecialKey] -> RobotArm
+updateEEPositionFromKeys (RobotArm links (x,  y)) boxPoints keys
+  | strictBoundaryCheck (newX, newY) boxPoints = RobotArm links (x, y)
+  | otherwise = RobotArm links (newX, newY)
   where
     newX
       | KeyRight `elem` keys = x+1

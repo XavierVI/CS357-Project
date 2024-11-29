@@ -1,4 +1,4 @@
-module Box (Box(..), drawBox, constructBox, updateBoxPosition, boundaryCheck) where
+module Box (Box(..), drawBox, constructBox, updateBoxPosition, boundaryCheck, strictBoundaryCheck) where
 
 import Graphics.Gloss
 -- import Graphics.Gloss.Data.ViewPort (ViewPort)
@@ -74,9 +74,19 @@ boundaryCheck (x, y) points = cond1 && cond2
     (x2, y2) = points !! 1
     (x3, y3) = points !! 2
     (x4, y4) = points !! 3
-    -- added constants to account for gripper
-    cond1 = (x1 <= x && x <= x2) && (x4 <= x && x <= x3)
-    cond2 = (y1 <= y && y <= y3) && (y2 <= y && y <= y4)
+    cond1 = (x1 <= x && x <= x2) || (x4 <= x && x <= x3)
+    cond2 = (y1 <= y && y <= y3) || (y2 <= y && y <= y4)
+
+strictBoundaryCheck :: Point -> [Point] -> Bool
+strictBoundaryCheck (x, y) points = cond1 && cond2
+  where
+    (x1, y1) = head points
+    (x2, y2) = points !! 1
+    (x3, y3) = points !! 2
+    (x4, y4) = points !! 3
+    -- added an offset to reduce sensativity
+    cond1 = (x1 < (x - 10) && x < x2) || (x4 < (x-10) && x < x3)
+    cond2 = (y1 < (y - 10) && y < y3) || (y2 < (y - 10) && y < y4)
 
 
 

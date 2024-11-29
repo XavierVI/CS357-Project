@@ -63,7 +63,7 @@ drawGripper (x, y) = [jointLink, gripperIndicator, threeDBar]
   where
     (x0, y0) = (x+7, y)
     (xf, yf) = (x0+4, y0)
-    jointLink = drawThickSegment 8 black (x0, y0) (xf, yf)
+    jointLink = drawThickSegment 4 black (x0, y0) (xf, yf)
 
     gripperIndicator = drawThickSegment 4 red (x0, y0+4) (xf, yf+4)
     
