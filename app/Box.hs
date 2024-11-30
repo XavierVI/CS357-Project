@@ -29,7 +29,7 @@ The box is drawn as a polygon
 
 -}
 drawBox :: Box -> Picture
-drawBox (Box _ points _ _) = Color (makeColorI 170 20 255 255) (Polygon points)
+drawBox (Box _ points _ _) = Color (makeColor 0.6 0.45 0.0 1) (Polygon points)
 
 
 {- 

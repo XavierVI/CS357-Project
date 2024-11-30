@@ -20,7 +20,7 @@ initialArm :: RobotArm
 initialArm = RobotArm [Link 100 78.27139, Link 100 (-73.63233)] (120, 106)
 
 initialBox :: Box
-initialBox = constructBox 30 50 120
+initialBox = constructBox 45 50 120
 
 
 drawSim :: Sim -> Picture
