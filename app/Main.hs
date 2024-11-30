@@ -1,6 +1,6 @@
 import Graphics.Gloss
 import Arm ( RobotArm(RobotArm), Link(Link), drawArm, updateArm )
-import Box (Box(Box), drawBox, constructBox, updateBoxPosition, moveGrippedBox, boundaryCheck, strictBoundaryCheck)
+import Box (Box(Box), drawBox, constructBox, moveGrippedBox, boundaryCheck, strictBoundaryCheck, pushBox, gravity)
 import Graphics.Gloss.Interface.Pure.Game
 
 data Sim = Sim { 
@@ -39,9 +39,9 @@ drawSim (Sim arm box _ _ _ _) = Pictures [
 
 updateSim :: Float -> Sim -> Sim
 updateSim dt (Sim arm box isPushed keys isGripped prevPos)
-  | isGripped = Sim newArm (moveGrippedBox diffInEEPos box) False keys isGripped eePos
-  | pushCondition = Sim newArm (updateBoxPosition pushDist eePos box) True keys isGripped eePos
-  | otherwise = Sim newArm box (boundaryCheck eePos boxPoints) keys isGripped eePos
+  | isGripped     = Sim newArm (moveGrippedBox diffInEEPos box) False keys isGripped eePos
+  | pushCondition = Sim newArm (gravity dt $ pushBox pushDist eePos box) True keys isGripped eePos
+  | otherwise     = Sim newArm (gravity dt box) (boundaryCheck eePos boxPoints) keys isGripped eePos
   where
     (xi, yi) = prevPos
     -- Update the arm and get the end-effector position
@@ -93,7 +93,7 @@ inputHandler
   (Sim arm box isPushed keys isGripped prevPos) =
     if boundaryCheck eePos points
     then Sim arm box isPushed keys (not isGripped) prevPos
-    else Sim arm box isPushed keys isGripped prevPos
+    else Sim arm box isPushed keys False prevPos
       where
         Box _ points _ _ = box
         RobotArm _ eePos = arm

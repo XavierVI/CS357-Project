@@ -12,12 +12,15 @@ data Box = Box {
   boxSize :: Float,
   boxEndPoints :: [Point],
   boxMass :: Float,
-  boxVelocity :: Point
+  boxVelocity :: Float
 }
+
+gravityAccel :: Float
+gravityAccel = 9.81
 
 constructBox :: Float -> Float -> Float -> Box
 constructBox size mass offset =
-    Box size [(offset, 0), (size + offset, 0), (size + offset, size), (offset, size)] mass (0, 0)
+    Box size [(offset, 0), (size + offset, 0), (size + offset, size), (offset, size)] mass 0
 
 {-
 Returns the visual representation of the box
@@ -28,8 +31,23 @@ The box is drawn as a polygon
 drawBox :: Box -> Picture
 drawBox (Box _ points _ _) = Color (makeColorI 170 20 255 255) (Polygon points)
 
-updateBoxPosition :: Float -> Point -> Box -> Box
-updateBoxPosition pushDist (ex, ey) (Box size points mass velocity) =
+
+{- 
+  This function will make the box fall to the ground at constant acceleration.
+  Once it reaches the ground, the velocity will reset back to zero.
+ -}
+gravity :: Float -> Box -> Box
+gravity dt (Box size endPoints mass velocity)
+  | all (\(_, y) -> y /= 0) endPoints = Box size newEndPoints mass (gravityAccel*dt + velocity)
+  | otherwise = Box size endPoints mass 0
+  where
+    newEndPoints = [ (x, max (y - velocity*dt) 0) | (x, y) <- endPoints]
+
+{- 
+  This function is used to move the arm when the end effector pushes it.`
+ -}
+pushBox :: Float -> Point -> Box -> Box
+pushBox pushDist (ex, ey) (Box size points mass velocity) =
     Box size newPoints mass velocity
   where
     -- Calculate the direction vector from the box's center to the end-effector
@@ -52,10 +70,14 @@ updateBoxPosition pushDist (ex, ey) (Box size points mass velocity) =
         avgX = sumX / n
         avgY = sumY / n
 
+{- 
+  This function is used to move the box such that it follows the end effector of the arm.
+ -}
 moveGrippedBox :: Point -> Box -> Box
 moveGrippedBox (dx, dy) (Box size endPoints mass velocity) = Box size newEndPoints mass velocity
   where
     newEndPoints = [ (x+dx, y+dy) | (x, y) <- endPoints]
+
 
 -- Translates all points of a box by dx and dy
 translateBoxPts :: [Point] -> Float -> Float -> [Point]
