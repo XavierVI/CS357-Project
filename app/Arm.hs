@@ -11,9 +11,9 @@ import Graphics.Gloss.Geometry.Angle
 ------------------------------------------------------------------}
 
 -- Model of the arm [Link length angle]
-data Link = Link Float Float
+data Link = Link { length :: Float, jointAngle :: Float }
   deriving (Show)
-data RobotArm = RobotArm [Link] Point
+data RobotArm = RobotArm { links :: [Link], eePos :: Point }
   deriving (Show)
 
 {---------------------------------------------------------------------
@@ -50,17 +50,32 @@ drawLink (Link linkLength angle) (x, y) = endPoint
     endPoint = (x+x', y+y')
 
 drawArm :: RobotArm -> Picture
-drawArm (RobotArm links _) = Pictures [thickSegments, Pictures (map jointPicture points)]
+drawArm (RobotArm links _) = Pictures [thickSegments, Pictures (map jointPicture points), gripper]
   where
     points = generatePoints links (0, 0)
-    thickSegments = Pictures $ zipWith drawThickSegment points (tail points)
-    jointPicture (x, y) = Translate x y (Color green (ThickCircle 0 5))  -- Joints visualization
+    thickSegments = Pictures $ zipWith (drawThickSegment 10 black) points (tail points)
+    jointPicture (x, y) = Translate x y (Color (makeColor 0.4 0.4 0.4 1) (ThickCircle 0 15))  -- Joints visualization
+    lastPt = last points
+    gripper = Pictures (drawGripper lastPt)
+    
+drawGripper :: Point -> [Picture]
+drawGripper (x, y) = [jointLink, gripperIndicator, threeDBar]
+  where
+    (x0, y0) = (x+7, y)
+    (xf, yf) = (x0+4, y0)
+    jointLink = drawThickSegment 4 black (x0, y0) (xf, yf)
+
+    gripperIndicator = drawThickSegment 4 red (x0, y0+4) (xf, yf+4)
+    
+    (xu, yu) = (xf, yf)
+    (xu', yu') = (xf+12, yf)
+    threeDBar = drawThickSegment 10 (makeColor 0.1 0.1 0.1 1) (xu, yu) (xu', yu')
 
 -- Draw a segment between two points
-drawThickSegment :: Point -> Point -> Picture
-drawThickSegment (x1, y1) (x2, y2) = Color black $ Polygon [p1, p2, p4, p3]
+drawThickSegment :: Float -> Color -> Point -> Point -> Picture
+drawThickSegment thickness c (x1, y1) (x2, y2) = Color c $ Polygon [p1, p2, p4, p3]
   where
-    thickness = 5  -- Thickness of the arm
+    -- thickness = 10  -- Thickness of the arm
     dx = x2 - x1
     dy = y2 - y1
     len = sqrt (dx * dx + dy * dy)
@@ -70,27 +85,21 @@ drawThickSegment (x1, y1) (x2, y2) = Color black $ Polygon [p1, p2, p4, p3]
     p2 = (x1 - perpX, y1 - perpY)
     p3 = (x2 + perpX, y2 + perpY)
     p4 = (x2 - perpX, y2 - perpY)
+    
+
 
 -- updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
 updateArm :: Float -> RobotArm -> (RobotArm, Point)
-updateArm dt (RobotArm links target) = (RobotArm updatedLinks target, fk updatedLinks)
+updateArm dt (RobotArm links (xd, yd)) =
+  -- if the y-coodinate is below the ground, then return
+  -- the current position
+  if yd < 0 then (RobotArm links (xd, yd), fk links)
+  else (RobotArm updatedLinks target, fk updatedLinks)
   where
-    -- desiredAngles = [ a | Link _ a <- ikNewtonRaphson links target 20]
+    target        = (xd, yd)
     desiredAngles = ik links target
-    updatedLinks = zipWith updateAngle links desiredAngles
+    updatedLinks  = zipWith updateAngle links desiredAngles
 
-
--- redraws the arm with a new angle for each joint using gradient descent
-updateArmGD :: Float -> RobotArm -> RobotArm
-updateArmGD dt (RobotArm links target)
-  | abs(loss target links) > tolerance = RobotArm updatedLinks target
-  | otherwise = RobotArm links target
-  where
-    tolerance = 0.5
-    learningRate = 0.09
-    grad         = gradient (loss target) links
-    updatedLinks = zipWith updateLinkAngle links grad
-    updateLinkAngle (Link len angle) g = Link len (angle - learningRate * g)
 
 
 {-------------------------------------------------------------
@@ -116,9 +125,6 @@ fk links = (x, y)
     x = position cos links
     y = position sin links
 
-ikNewtonRaphson :: [Link] -> Point -> Int -> [Link]
-ikNewtonRaphson links _ 0 = links
-ikNewtonRaphson links p n = ikNewtonRaphson (newtonRaphson links p) p (n-1)
 
 -- returns the joint angles required for the desired position in radians
 ik :: [Link] -> Point -> [Float]
@@ -148,58 +154,3 @@ updateAngle (Link l a) a'
     tolerance     = 0.5
     step          = 0.5
     updatedAngle  = a + signum (a' - a) * step
-
-
-loss :: Point -> [Link] -> Float
-loss (xd, yd) links = sqrt ( (term1**2) + (term2**2) )
-  where
-    term1 = xd - position cos links
-    term2 = yd - position sin links
-
-
-{- 
-  The gradient takes a scalar valued function and returns a vector of the
-  partial derivative of the function over each parameter.
-
-  These parameters are determined by the point we are evaluating each partial
-  derivative at.
-
- -}
-gradient :: ([Link] -> Float) -> [Link] -> [Float]
-gradient f links = [partial1, partial2]
-  where
-    Link l1 a1 = head links
-    Link l2 a2 = links !! 1
-    h          = 0.0001
-    t1         = f [Link l1 a1,     Link l2 a2    ]
-    t1'        = f [Link l1 (a1+h), Link l2 a2    ]
-    t2         = f [Link l1 a1,     Link l2 a2    ]
-    t2'        = f [Link l1 a1,     Link l2 (a2+h)]
-    partial1   = (t1' - t1) / h
-    partial2   = (t2' - t2) / h
-
-
-jacobian :: [Link] -> [Float]
-jacobian links = [a1', a2']
-  where
-    a1' = sum (gradient (position cos) links)
-    a2' = sum (gradient (position sin) links)
-
-
-newtonRaphson :: [Link] -> Point -> [Link]
-newtonRaphson links (xd, yd)
-  | sqrt( e1**2 + e2**2 ) > tolerance = updatedLinks
-  | otherwise = links
-  where
-    tolerance = 0.001
-    Link l1 a1 = head links
-    Link l2 a2 = links !! 1
-    j        = jacobian links
-    (x0, y0) = fk links
-    (e1, e2) = (xd-x0, yd-y0)
-    a1' = a1 + (head j * e1)
-    a2' = a2 + (j !! 1 * e2)
-    updatedLinks = [Link l1 a1', Link l2 a2']
-
-
-
