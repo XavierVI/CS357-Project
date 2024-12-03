@@ -13,7 +13,7 @@ import Graphics.Gloss.Geometry.Angle
 -- Model of the arm [Link length angle]
 data Link = Link { length :: Float, jointAngle :: Float }
   deriving (Show)
-data RobotArm = RobotArm { links :: [Link], eePos :: Point }
+data RobotArm = RobotArm { links :: [Link], eePos :: Point, grabState :: Bool }
   deriving (Show)
 
 {---------------------------------------------------------------------
@@ -50,22 +50,23 @@ drawLink (Link linkLength angle) (x, y) = endPoint
     endPoint = (x+x', y+y')
 
 drawArm :: RobotArm -> Picture
-drawArm (RobotArm links _) = Pictures [thickSegments, Pictures (map jointPicture points), gripper]
+drawArm (RobotArm links _ grabState) = Pictures [thickSegments, Pictures (map jointPicture points), gripper]
   where
     points = generatePoints links (0, 0)
     thickSegments = Pictures $ zipWith (drawThickSegment 10 black) points (tail points)
     jointPicture (x, y) = Translate x y (Color (makeColor 0.4 0.4 0.4 1) (ThickCircle 0 15))  -- Joints visualization
     lastPt = last points
-    gripper = Pictures (drawGripper lastPt)
+    gripper = Pictures (drawGripper lastPt grabState)
     
-drawGripper :: Point -> [Picture]
-drawGripper (x, y) = [jointLink, gripperIndicator, threeDBar]
+drawGripper :: Point -> Bool -> [Picture]
+drawGripper (x, y) grabState = [jointLink, gripperIndicator, threeDBar]
   where
     (x0, y0) = (x+7, y)
     (xf, yf) = (x0+4, y0)
     jointLink = drawThickSegment 4 black (x0, y0) (xf, yf)
-
-    gripperIndicator = drawThickSegment 4 red (x0, y0+4) (xf, yf+4)
+    
+    lightColor = if grabState then green else red
+    gripperIndicator = drawThickSegment 4 lightColor (x0, y0+4) (xf, yf+4)
     
     (xu, yu) = (xf, yf)
     (xu', yu') = (xf+12, yf)
@@ -90,11 +91,11 @@ drawThickSegment thickness c (x1, y1) (x2, y2) = Color c $ Polygon [p1, p2, p4, 
 
 -- updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
 updateArm :: Float -> RobotArm -> (RobotArm, Point)
-updateArm dt (RobotArm links (xd, yd)) =
+updateArm dt (RobotArm links (xd, yd) grabState) =
   -- if the y-coodinate is below the ground, then return
   -- the current position
-  if yd < 0 then (RobotArm links (xd, yd), fk links)
-  else (RobotArm updatedLinks target, fk updatedLinks)
+  if yd < 0 then (RobotArm links (xd, yd) grabState, fk links)
+  else (RobotArm updatedLinks target grabState, fk updatedLinks)
   where
     target        = (xd, yd)
     desiredAngles = ik links target
@@ -154,3 +155,6 @@ updateAngle (Link l a) a'
     tolerance     = 0.5
     step          = 0.5
     updatedAngle  = a + signum (a' - a) * step
+
+updateGrabState :: RobotArm -> RobotArm
+updateGrabState arm = arm {grabState = not $ grabState arm}

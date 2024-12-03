@@ -1,5 +1,5 @@
 import Graphics.Gloss
-import Arm ( RobotArm(RobotArm), Link(Link), drawArm, updateArm )
+import Arm ( RobotArm(RobotArm), Link(Link), drawArm, updateArm, updateGrabState )
 import Box (Box(Box), drawBox, constructBox, moveGrippedBox, boundaryCheck, strictBoundaryCheck, pushBox, gravity)
 import Graphics.Gloss.Interface.Pure.Game
 
@@ -17,7 +17,7 @@ window :: Display
 window = InWindow "Robot Arm Simulator" (900, 800) (50, 50)
 
 initialArm :: RobotArm
-initialArm = RobotArm [Link 100 78.27139, Link 100 (-73.63233)] (120, 106)
+initialArm = RobotArm [Link 100 78.27139, Link 100 (-73.63233)] (120, 106) False
 
 initialBox :: Box
 initialBox = constructBox 45 50 120
@@ -63,9 +63,9 @@ updateSim dt (Sim arm box isPushed keys isGripped prevPos)
 
  -}
 updateEEPositionFromKeys :: RobotArm -> [Point] -> [SpecialKey] -> RobotArm
-updateEEPositionFromKeys (RobotArm links (x,  y)) boxPoints keys
-  | strictBoundaryCheck (newX, newY) boxPoints = RobotArm links (x, y)
-  | otherwise = RobotArm links (newX, newY)
+updateEEPositionFromKeys (RobotArm links (x,  y) grabState) boxPoints keys
+  | strictBoundaryCheck (newX, newY) boxPoints = RobotArm links (x, y) grabState
+  | otherwise = RobotArm links (newX, newY) grabState
   where
     newX
       | KeyRight `elem` keys = x+1
@@ -92,11 +92,11 @@ inputHandler
   (EventKey (SpecialKey KeySpace) Down _ _)
   (Sim arm box isPushed keys isGripped prevPos) =
     if boundaryCheck eePos points
-    then Sim arm box isPushed keys (not isGripped) prevPos
+    then Sim (updateGrabState arm) box isPushed keys (not isGripped) prevPos
     else Sim arm box isPushed keys False prevPos
       where
         Box _ points _ _ = box
-        RobotArm _ eePos = arm
+        RobotArm _ eePos _ = arm
 
 inputHandler
   (EventKey (SpecialKey key) Down _ _)
