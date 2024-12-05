@@ -18,6 +18,10 @@ data Box = Box {
 gravityAccel :: Float
 gravityAccel = 9.81
 
+-- Floor at y = 0
+floorLevel :: Float
+floorLevel = 0
+
 constructBox :: Float -> Float -> Float -> Box
 constructBox size mass offset =
     Box size [(offset, 0), (size + offset, 0), (size + offset, size), (offset, size)] mass 0
@@ -44,7 +48,7 @@ gravity dt (Box size endPoints mass velocity)
     newEndPoints = [ (x, max (y - velocity*dt) 0) | (x, y) <- endPoints]
 
 {- 
-  This function is used to move the arm when the end effector pushes it.`
+  This function is used to move the arm when the end effector pushes it.
  -}
 pushBox :: Float -> Point -> Box -> Box
 pushBox pushDist (ex, ey) (Box size points mass velocity) =
@@ -74,10 +78,19 @@ pushBox pushDist (ex, ey) (Box size points mass velocity) =
   This function is used to move the box such that it follows the end effector of the arm.
  -}
 moveGrippedBox :: Point -> Box -> Box
-moveGrippedBox (dx, dy) (Box size endPoints mass velocity) = Box size newEndPoints mass velocity
+moveGrippedBox (dx, dy) (Box size endPoints mass velocity) = Box size correctedPoints mass velocity
   where
-    newEndPoints = [ (x+dx, y+dy) | (x, y) <- endPoints]
+    -- Move all points by (dx, dy)
+    newPoints = [ (x + dx, y + dy) | (x, y) <- endPoints ]
 
+    -- Calculate the lowest y-coordinate of the box (bottom edge)
+    minY = minimum [y | (_, y) <- newPoints]
+
+    -- Prevent the box from going below the floor (floorLevel = 0)
+    floorCorrection = if minY < 0 then -minY else 0
+
+    -- Apply the floor correction to all points
+    correctedPoints = [ (x, y + floorCorrection) | (x, y) <- newPoints ]
 
 -- Translates all points of a box by dx and dy
 translateBoxPts :: [Point] -> Float -> Float -> [Point]
@@ -96,26 +109,28 @@ rotateBoxPts points angleDeg = [ rotate pt | pt <- points ]
 
 -- checks if a point is touching or inside the box
 boundaryCheck :: Point -> [Point] -> Bool
-boundaryCheck (x, y) points = cond1 && cond2
-  where
-    (x1, y1) = head points
-    (x2, y2) = points !! 1
-    (x3, y3) = points !! 2
-    (x4, y4) = points !! 3
-    cond1 = (x1 <= x && x <= x2) || (x4 <= x && x <= x3)
-    cond2 = (y1 <= y && y <= y3) || (y2 <= y && y <= y4)
+boundaryCheck (x, y) points =
+  let
+    tolerance = 5 -- Tolerance for boundary checks
+    -- Extract the corners of the box
+    minX = minimum [px | (px, _) <- points]
+    maxX = maximum [px | (px, _) <- points]
+    minY = minimum [py | (_, py) <- points]
+    maxY = maximum [py | (_, py) <- points]
+
+    condX = (minX - tolerance) <= x && x <= (maxX + tolerance)
+    condY = (minY - tolerance) <= y && y <= (maxY + tolerance)
+  in
+    condX && condY
 
 strictBoundaryCheck :: Point -> [Point] -> Bool
-strictBoundaryCheck (x, y) points = cond1 && cond2
-  where
-    (x1, y1) = head points
-    (x2, y2) = points !! 1
-    (x3, y3) = points !! 2
-    (x4, y4) = points !! 3
-    -- added an offset to reduce sensativity
-    cond1 = (x1 < (x - 10) && x < x2) || (x4 < (x-10) && x < x3)
-    cond2 = (y1 < (y - 10) && y < y3) || (y2 < (y - 10) && y < y4)
+strictBoundaryCheck (x, y) points =
+  let
+    tolerance = 1 -- Tolerance for strict boundary checks
+    (x1, y1) = head points     -- Bottom-left corner
+    (x2, _) = points !! 1      -- Bottom-right corner
+    (_, y4) = points !! 3      -- Top-left corner
 
-
-
-
+    condX = (x1 - tolerance) <= x && x <= (x2 + tolerance) -- Check if X is within bounds
+    condY = (y1 - tolerance) <= y && y <= (y4 + tolerance) -- Check if Y is within bounds
+  in condX && condY

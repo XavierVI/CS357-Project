@@ -1,6 +1,6 @@
 import Graphics.Gloss
 import Arm ( RobotArm(RobotArm), Link(Link), drawArm, updateArm, updateGrabState )
-import Box (Box(Box), drawBox, constructBox, moveGrippedBox, boundaryCheck, strictBoundaryCheck, pushBox, gravity)
+import Box (Box(Box), drawBox, constructBox, moveGrippedBox, boundaryCheck, strictBoundaryCheck, pushBox, gravity, floorLevel)
 import Graphics.Gloss.Interface.Pure.Game
 
 data Sim = Sim { 
@@ -36,25 +36,20 @@ drawSim (Sim arm box _ _ _ _) = Pictures [
     floorPic = translate 0 (-200) $ color (greyN 0.5) $ rectangleSolid 900 400
     renderText t xPos yPos = Translate xPos yPos $ Scale 0.2 0.2 $ Text t
 
-
 updateSim :: Float -> Sim -> Sim
 updateSim dt (Sim arm box isPushed keys isGripped prevPos)
-  | isGripped     = Sim newArm (moveGrippedBox diffInEEPos box) False keys isGripped eePos
-  | pushCondition = Sim newArm (gravity dt $ pushBox pushDist eePos box) True keys isGripped eePos
-  | otherwise     = Sim newArm (gravity dt box) (boundaryCheck eePos boxPoints) keys isGripped eePos
+  | isGripped = Sim updatedArm movedBox False keys isGripped eePos
+  | otherwise = Sim updatedArm (gravity dt box) False keys isGripped eePos
   where
-    (xi, yi) = prevPos
     -- Update the arm and get the end-effector position
-    (newArm, eePos) = updateArm dt (updateEEPositionFromKeys arm boxPoints keys)
-    (xf, yf) = eePos
-    diffInEEPos = (xf-xi, yf-yi)
+    (updatedArm, eePos) = updateArm dt (updateEEPositionFromKeys arm boxPoints keys)
+    diffInEEPos = (fst eePos - fst prevPos, snd eePos - snd prevPos)
 
-    -- Extract box points for collision check
+    -- Move the box only if gripped
+    movedBox = if isGripped then moveGrippedBox diffInEEPos box else box
+
+    -- Extract box points for use in checks
     Box _ boxPoints _ _ = box
-
-    -- Fixed push distance
-    pushDist = 5 -- Push distance
-    pushCondition = not isPushed && boundaryCheck eePos boxPoints
 
 {- 
   This function will return a new RobotArm with an updated position for the end effector
@@ -63,21 +58,20 @@ updateSim dt (Sim arm box isPushed keys isGripped prevPos)
 
  -}
 updateEEPositionFromKeys :: RobotArm -> [Point] -> [SpecialKey] -> RobotArm
-updateEEPositionFromKeys (RobotArm links (x,  y) grabState) boxPoints keys
+updateEEPositionFromKeys (RobotArm links (x, y) grabState) boxPoints keys
+  | grabState = RobotArm links (newX, newY) grabState  -- Relaxed constraints while gripping
   | strictBoundaryCheck (newX, newY) boxPoints = RobotArm links (x, y) grabState
   | otherwise = RobotArm links (newX, newY) grabState
   where
     newX
-      | KeyRight `elem` keys = x+1
-      | KeyLeft `elem` keys = x-1
+      | KeyRight `elem` keys = x + 1
+      | KeyLeft `elem` keys = x - 1
       | otherwise = x
 
     newY
-      | KeyUp `elem` keys = y+1
-      | KeyDown `elem` keys = y-1
+      | KeyUp `elem` keys = y + 1
+      | KeyDown `elem` keys = y - 1
       | otherwise = y
-
-
 
 inputHandler :: Event -> Sim -> Sim
 inputHandler (EventKey (SpecialKey KeyEnter) Down _ _) _ =
@@ -110,8 +104,6 @@ inputHandler
 
 inputHandler event sim = sim
 
-
-
 main :: IO()
 main = play
   window -- display
@@ -121,7 +113,3 @@ main = play
   drawSim      -- function to draw the objects in the simulation
   inputHandler -- input handler for user input
   updateSim    -- function to call on each simulation step
-
-
-
-
