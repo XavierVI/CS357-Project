@@ -13,7 +13,11 @@ import Graphics.Gloss.Geometry.Angle
 -- Model of the arm [Link length angle]
 data Link = Link { length :: Float, jointAngle :: Float }
   deriving (Show)
-data RobotArm = RobotArm { links :: [Link], eePos :: Point, grabState :: Bool }
+data RobotArm = RobotArm {
+  links :: [Link],
+  eePos :: Point, 
+  armGrabState :: Bool
+}
   deriving (Show)
 
 {---------------------------------------------------------------------
@@ -81,7 +85,7 @@ drawThickSegment thickness c (x1, y1) (x2, y2) = Color c $ Polygon [p1, p2, p4, 
     dy = y2 - y1
     len = sqrt (dx * dx + dy * dy)
     perpX = (dy / len) * (thickness / 2)  -- Perpendicular vector for width
-    perpY = -(dx / len) * (thickness / 2)
+    perpY = -((dx / len) * (thickness / 2))
     p1 = (x1 + perpX, y1 + perpY)
     p2 = (x1 - perpX, y1 - perpY)
     p3 = (x2 + perpX, y2 + perpY)
@@ -91,11 +95,7 @@ drawThickSegment thickness c (x1, y1) (x2, y2) = Color c $ Polygon [p1, p2, p4, 
 
 -- updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
 updateArm :: Float -> RobotArm -> (RobotArm, Point)
-updateArm dt (RobotArm links (xd, yd) grabState) =
-  -- if the y-coodinate is below the ground, then return
-  -- the current position
-  if yd < 0 then (RobotArm links (xd, yd) grabState, fk links)
-  else (RobotArm updatedLinks target grabState, fk updatedLinks)
+updateArm dt (RobotArm links (xd, yd) grabState) = (RobotArm updatedLinks target grabState, fk updatedLinks)
   where
     target        = (xd, yd)
     desiredAngles = ik links target
@@ -157,4 +157,4 @@ updateAngle (Link l a) a'
     updatedAngle  = a + signum (a' - a) * step
 
 updateGrabState :: RobotArm -> RobotArm
-updateGrabState arm = arm {grabState = not $ grabState arm}
+updateGrabState arm = arm {armGrabState = not $ armGrabState arm}
