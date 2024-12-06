@@ -14,7 +14,7 @@ import Graphics.Gloss.Geometry.Angle
 data Link = Link { length :: Float, jointAngle :: Float }
   deriving (Show)
 data RobotArm = RobotArm {
-  links :: [Link],
+  armLinks :: [Link],
   eePos :: Point, 
   armGrabState :: Bool
 }
@@ -76,7 +76,10 @@ drawGripper (x, y) grabState = [jointLink, gripperIndicator, threeDBar]
     (xu', yu') = (xf+12, yf)
     threeDBar = drawThickSegment 10 (makeColor 0.1 0.1 0.1 1) (xu, yu) (xu', yu')
 
--- Draw a segment between two points
+{---------------------------------------------------------------------
+  Draw a segment between two points
+
+-----------------------------------------------------------------------}
 drawThickSegment :: Float -> Color -> Point -> Point -> Picture
 drawThickSegment thickness c (x1, y1) (x2, y2) = Color c $ Polygon [p1, p2, p4, p3]
   where
@@ -94,8 +97,8 @@ drawThickSegment thickness c (x1, y1) (x2, y2) = Color c $ Polygon [p1, p2, p4, 
 
 
 -- updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
-updateArm :: Float -> RobotArm -> (RobotArm, Point)
-updateArm dt (RobotArm links (xd, yd) grabState) = (RobotArm updatedLinks target grabState, fk updatedLinks)
+updateArm :: RobotArm -> (RobotArm, Point)
+updateArm (RobotArm links (xd, yd) grabState) = (RobotArm updatedLinks target grabState, fk updatedLinks)
   where
     target        = (xd, yd)
     desiredAngles = ik links target
@@ -131,8 +134,8 @@ fk links = (x, y)
 ik :: [Link] -> Point -> [Float]
 ik links (x, y) = [radToDeg q1, radToDeg q2]
   where
-    Link l1 a1 = head links
-    Link l2 a2 = links !! 1
+    Link l1 _ = head links
+    Link l2 _ = links !! 1
     gamma = atan2 y x
     distSquared = x**2 + y**2
     -- calculate joint angles

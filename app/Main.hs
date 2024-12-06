@@ -67,7 +67,7 @@ updateSim dt (Sim arm box isPushed keys isGripped prevPos)
     pushTolerance = 5
 
     -- Update the arm and get the end-effector position
-    (updatedArm, eePos) = updateArm dt (updateEEPositionFromKeys arm boxPoints keys)
+    (updatedArm, eePos) = updateArm (updateEEPositionFromKeys arm boxPoints keys)
     boxTrajectory = (fst eePos - fst prevPos, snd eePos - snd prevPos)
 
     -- Move the box only if gripped
@@ -129,7 +129,7 @@ inputHandler
     then Sim (updateGrabState arm) box isPushed keys (not isGripped) prevPos
     else Sim arm box isPushed keys False prevPos
       where
-        tolerance = 5
+        tolerance = 15
         Box _ points _ _ = box
         RobotArm _ eePos _ = arm
 
