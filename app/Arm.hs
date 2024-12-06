@@ -11,7 +11,7 @@ import Graphics.Gloss.Geometry.Angle
 
 ------------------------------------------------------------------}
 
--- Model of the arm [Link length angle]
+
 data Link = Link { length :: Float, jointAngle :: Float }
   deriving (Show)
 data RobotArm = RobotArm {
@@ -20,9 +20,6 @@ data RobotArm = RobotArm {
   armGrabState :: Bool
 }
   deriving (Show)
-
-
-
 
 
 {---------------------------------------------------------------------

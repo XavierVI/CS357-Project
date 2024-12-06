@@ -84,10 +84,19 @@ pushBox pushDist (ex, ey) (Box size points mass velocity) =
 
 ------------------------------------------------------------}
 moveGrippedBox :: Point -> Box -> Box
-moveGrippedBox (dx, dy) (Box size endPoints mass velocity) = Box size correctedPoints mass velocity
+moveGrippedBox (dx, dy) (Box size endPoints mass velocity) =
+  Box size (translateBoxPts endPoints dx dy) mass velocity
+
+{-----------------------------------------------------------
+  Translates all points of a box by dx and dy
+
+------------------------------------------------------------}
+
+translateBoxPts :: [Point] -> Float -> Float -> [Point]
+translateBoxPts points dx dy = correctedPoints
   where
     -- Move all points by (dx, dy)
-    newPoints = [ (x + dx, y + dy) | (x, y) <- endPoints ]
+    newPoints = [ (x + dx, y + dy) | (x, y) <- points ]
 
     -- Calculate the lowest y-coordinate of the box (bottom edge)
     minY = minimum [y | (_, y) <- newPoints]
@@ -98,17 +107,6 @@ moveGrippedBox (dx, dy) (Box size endPoints mass velocity) = Box size correctedP
     -- Apply the floor correction to all points
     correctedPoints = [ (x, y + floorCorrection) | (x, y) <- newPoints ]
 
-{-----------------------------------------------------------
-  Translates all points of a box by dx and dy
-
-------------------------------------------------------------}
-
-translateBoxPts :: [Point] -> Float -> Float -> [Point]
-translateBoxPts points dx dy =
-  if all condition points then [ (x + dx, y + dy) | (x, y) <- points ]
-  else points
-  where
-    condition (px, py) = (py + dy) >= -1
 
 rotateBoxPts :: [Point] -> Float -> [Point]
 rotateBoxPts points angleDeg = [ rotate pt | pt <- points ]
