@@ -1,6 +1,6 @@
 import Graphics.Gloss
 import Arm ( RobotArm(RobotArm), Link(Link), drawArm, updateArm, updateGrabState )
-import Box (Box(Box), drawBox, constructBox, moveGrippedBox, boundaryCheck, pushBox, gravity)
+import Box (Box(Box), drawBox, constructBox, moveGrippedBox, boundaryCheck, pushBox, gravity, boxVelocity)
 import Graphics.Gloss.Interface.Pure.Game
 
 data Sim = Sim { 
@@ -126,7 +126,7 @@ inputHandler
   (EventKey (SpecialKey KeySpace) Down _ _)
   (Sim arm box isPushed keys isGripped prevPos) =
     if boundaryCheck eePos tolerance points
-    then Sim (updateGrabState arm) box isPushed keys (not isGripped) prevPos
+    then Sim (updateGrabState arm) (box {boxVelocity = 0})isPushed keys (not isGripped) prevPos
     else Sim arm box isPushed keys False prevPos
       where
         tolerance = 15
