@@ -63,5 +63,3 @@ stateToState'  = map next
             (npx,npy) = (px + vx, py + vy)
             in model {getVelocity = (nvx,nvy), getPostition = (npx,npy) } 
             -- Model == new decleration | model == remake old one with changes
-        
-        

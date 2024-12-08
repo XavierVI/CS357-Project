@@ -3,9 +3,12 @@ module Box where
 import Graphics.Gloss
 import Graphics.Gloss.Geometry.Angle (degToRad)
 
-{- 
-  This file defines the box in the simulation and the functions used to move it.
- -}
+
+{-----------------------------------------------------------
+  This file defines the box in the simulation and the 
+  functions used to move it.
+
+------------------------------------------------------------}
 
 
 data Box = Box {
@@ -18,24 +21,26 @@ data Box = Box {
 gravityAccel :: Float
 gravityAccel = 9.81
 
+-- Floor at y = 0
+floorLevel :: Float
+floorLevel = 0
+
 constructBox :: Float -> Float -> Float -> Box
 constructBox size mass offset =
     Box size [(offset, 0), (size + offset, 0), (size + offset, size), (offset, size)] mass 0
 
-{-
-Returns the visual representation of the box
+{-----------------------------------------------------------
+  Returns a visual representation of the box.
 
-The box is drawn as a polygon
-
--}
+------------------------------------------------------------}
 drawBox :: Box -> Picture
 drawBox (Box _ points _ _) = Color (makeColor 0.6 0.45 0.0 1) (Polygon points)
 
-
-{- 
+{-----------------------------------------------------------
   This function will make the box fall to the ground at constant acceleration.
   Once it reaches the ground, the velocity will reset back to zero.
- -}
+
+------------------------------------------------------------}
 gravity :: Float -> Box -> Box
 gravity dt (Box size endPoints mass velocity)
   | all (\(_, y) -> y /= 0) endPoints = Box size newEndPoints mass (gravityAccel*dt + velocity)
@@ -43,9 +48,12 @@ gravity dt (Box size endPoints mass velocity)
   where
     newEndPoints = [ (x, max (y - velocity*dt) 0) | (x, y) <- endPoints]
 
-{- 
-  This function is used to move the arm when the end effector pushes it.`
- -}
+
+{-----------------------------------------------------------
+  This function will move the arm in a specific direction when
+  the arm is pushing it.
+
+------------------------------------------------------------}
 pushBox :: Float -> Point -> Box -> Box
 pushBox pushDist (ex, ey) (Box size points mass velocity) =
     Box size newPoints mass velocity
@@ -70,22 +78,35 @@ pushBox pushDist (ex, ey) (Box size points mass velocity) =
         avgX = sumX / n
         avgY = sumY / n
 
-{- 
-  This function is used to move the box such that it follows the end effector of the arm.
- -}
+{-----------------------------------------------------------
+  This function is used to move the box such that it follows 
+  the trajectory of the end effector.
+
+------------------------------------------------------------}
 moveGrippedBox :: Point -> Box -> Box
-moveGrippedBox (dx, dy) (Box size endPoints mass velocity) = Box size newEndPoints mass velocity
-  where
-    newEndPoints = [ (x+dx, y+dy) | (x, y) <- endPoints]
+moveGrippedBox (dx, dy) (Box size endPoints mass velocity) =
+  Box size (translateBoxPts endPoints dx dy) mass velocity
 
+{-----------------------------------------------------------
+  Translates all points of a box by dx and dy
 
--- Translates all points of a box by dx and dy
+------------------------------------------------------------}
+
 translateBoxPts :: [Point] -> Float -> Float -> [Point]
-translateBoxPts points dx dy =
-  if all condition points then [ (x + dx, y + dy) | (x, y) <- points ]
-  else points
+translateBoxPts points dx dy = correctedPoints
   where
-    condition (px, py) = (py + dy) >= -1
+    -- Move all points by (dx, dy)
+    newPoints = [ (x + dx, y + dy) | (x, y) <- points ]
+
+    -- Calculate the lowest y-coordinate of the box (bottom edge)
+    minY = minimum [y | (_, y) <- newPoints]
+
+    -- Prevent the box from going below the floor (floorLevel = 0)
+    floorCorrection = if minY < 0 then -minY else 0
+
+    -- Apply the floor correction to all points
+    correctedPoints = [ (x, y + floorCorrection) | (x, y) <- newPoints ]
+
 
 rotateBoxPts :: [Point] -> Float -> [Point]
 rotateBoxPts points angleDeg = [ rotate pt | pt <- points ]
@@ -94,28 +115,24 @@ rotateBoxPts points angleDeg = [ rotate pt | pt <- points ]
     rotate (x, y) = (x * (cos angleRad) - y * (sin angleRad), x * (sin angleRad) + y * (cos angleRad))
 
 
--- checks if a point is touching or inside the box
-boundaryCheck :: Point -> [Point] -> Bool
-boundaryCheck (x, y) points = cond1 && cond2
-  where
-    (x1, y1) = head points
-    (x2, y2) = points !! 1
-    (x3, y3) = points !! 2
-    (x4, y4) = points !! 3
-    cond1 = (x1 <= x && x <= x2) || (x4 <= x && x <= x3)
-    cond2 = (y1 <= y && y <= y3) || (y2 <= y && y <= y4)
+{-----------------------------------------------------------
+  This function checks if a point is near or inside a boundary defined
+  by a list of four points.
 
-strictBoundaryCheck :: Point -> [Point] -> Bool
-strictBoundaryCheck (x, y) points = cond1 && cond2
-  where
-    (x1, y1) = head points
-    (x2, y2) = points !! 1
-    (x3, y3) = points !! 2
-    (x4, y4) = points !! 3
-    -- added an offset to reduce sensativity
-    cond1 = (x1 < (x - 10) && x < x2) || (x4 < (x-10) && x < x3)
-    cond2 = (y1 < (y - 10) && y < y3) || (y2 < (y - 10) && y < y4)
+  The tolerance specifies how close the arm must be in order
+  for this function to return true.
 
+------------------------------------------------------------}
+boundaryCheck :: Point -> Float -> [Point] -> Bool
+boundaryCheck (x, y) tolerance points =
+  let
+    -- Extract the corners of the box
+    minX = minimum [px | (px, _) <- points]
+    maxX = maximum [px | (px, _) <- points]
+    minY = minimum [py | (_, py) <- points]
+    maxY = maximum [py | (_, py) <- points]
 
-
-
+    condX = (minX - tolerance) <= x && x <= (maxX + tolerance)
+    condY = (minY - tolerance) <= y && y <= (maxY + tolerance)
+  in
+    condX && condY

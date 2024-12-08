@@ -6,32 +6,26 @@ import Graphics.Gloss.Geometry.Angle
 -- import Graphics.Gloss.Data.ViewPort (ViewPort)
 
 {-----------------------------------------------------------------
-  This file is going to be where we define the model of the arm and functions to draw/move the arm in the window.
+  This file is going to be where we define the model of the arm and
+  functions to draw/move the arm in the window.
 
 ------------------------------------------------------------------}
 
--- Model of the arm [Link length angle]
+
 data Link = Link { length :: Float, jointAngle :: Float }
   deriving (Show)
-data RobotArm = RobotArm { links :: [Link], eePos :: Point, grabState :: Bool }
+data RobotArm = RobotArm {
+  armLinks :: [Link],
+  eePos :: Point, 
+  armGrabState :: Bool
+}
   deriving (Show)
 
+
 {---------------------------------------------------------------------
-  - These functions are used to display the arm in the window
-
-  - drawLink takes a Link and a starting point and returns the end point for the link
-  
-  - generatePoints takes a list of links and a point which represents the base of the arm. It generates a list of points which represent the location of each joint
-  
-  - displayArm takes a RobotArm and returns a Line, which is a visual representation of the arm.
-
-  ## Moving the arm in the window:
-  The function updateArm is going to update the joint angles for the links and automatically
-  call the previous three functions to redraw the arm
+  This function generates the (x, y) coordinates of each link in cartesian space
 
 -----------------------------------------------------------------------}
-
--- this function generates the position of each link in cartesian space
 generatePoints :: [Link] -> Point -> [Point]
 generatePoints [] _ = []
 generatePoints [Link l1 a1, Link l2 a2] _ = [(0,0), p1, p2]
@@ -41,13 +35,15 @@ generatePoints [Link l1 a1, Link l2 a2] _ = [(0,0), p1, p2]
 generatePoints (link:links) prevPoint = endPoint : generatePoints links endPoint
   where
     endPoint = drawLink link prevPoint
-    
+
+
 drawLink :: Link -> Point -> Point
 drawLink (Link linkLength angle) (x, y) = endPoint
   where
     x' = linkLength * cos (degToRad angle)
     y' = linkLength * sin (degToRad angle)
     endPoint = (x+x', y+y')
+
 
 drawArm :: RobotArm -> Picture
 drawArm (RobotArm links _ grabState) = Pictures [thickSegments, Pictures (map jointPicture points), gripper]
@@ -57,22 +53,35 @@ drawArm (RobotArm links _ grabState) = Pictures [thickSegments, Pictures (map jo
     jointPicture (x, y) = Translate x y (Color (makeColor 0.4 0.4 0.4 1) (ThickCircle 0 15))  -- Joints visualization
     lastPt = last points
     gripper = Pictures (drawGripper lastPt grabState)
-    
-drawGripper :: Point -> Bool -> [Picture]
-drawGripper (x, y) grabState = [jointLink, gripperIndicator, threeDBar]
-  where
-    (x0, y0) = (x+7, y)
-    (xf, yf) = (x0+4, y0)
-    jointLink = drawThickSegment 4 black (x0, y0) (xf, yf)
-    
-    lightColor = if grabState then green else red
-    gripperIndicator = drawThickSegment 4 lightColor (x0, y0+4) (xf, yf+4)
-    
-    (xu, yu) = (xf, yf)
-    (xu', yu') = (xf+12, yf)
-    threeDBar = drawThickSegment 10 (makeColor 0.1 0.1 0.1 1) (xu, yu) (xu', yu')
 
--- Draw a segment between two points
+
+drawGripper :: Point -> Bool -> [Picture]
+drawGripper (x, y) grabState = [gripperLink, grabStateIndicator, fingers]
+  where
+    -- draw the grab state indicator
+    indicatorPos = 4
+    indicatorSize = 4
+    lightColor = if grabState then green else red
+    grabStateIndicator = drawThickSegment 4 lightColor (x0, y0 + indicatorPos)
+                                                       (xf, yf + indicatorSize)
+
+    -- these points define the gripper link's position
+    (x0, y0) = (x + 7, y)
+    (xf, yf) = (x0 + 4, y0)
+    
+    -- these points define the position of the fingers
+    (xu, yu) = (xf, yf)
+    (xu', yu') = (xf + 12, yf)
+    
+    -- draw gripper link and fingers
+    gripperLink = drawThickSegment 4 black (x0, y0) (xf, yf)
+    fingers = drawThickSegment 10 (makeColor 0.1 0.1 0.1 1) (xu, yu) (xu', yu')
+
+
+{---------------------------------------------------------------------
+  Draw a segment between two points
+
+-----------------------------------------------------------------------}
 drawThickSegment :: Float -> Color -> Point -> Point -> Picture
 drawThickSegment thickness c (x1, y1) (x2, y2) = Color c $ Polygon [p1, p2, p4, p3]
   where
@@ -81,30 +90,33 @@ drawThickSegment thickness c (x1, y1) (x2, y2) = Color c $ Polygon [p1, p2, p4, 
     dy = y2 - y1
     len = sqrt (dx * dx + dy * dy)
     perpX = (dy / len) * (thickness / 2)  -- Perpendicular vector for width
-    perpY = -(dx / len) * (thickness / 2)
+    perpY = -((dx / len) * (thickness / 2))
     p1 = (x1 + perpX, y1 + perpY)
     p2 = (x1 - perpX, y1 - perpY)
     p3 = (x2 + perpX, y2 + perpY)
     p4 = (x2 - perpX, y2 - perpY)
     
 
+{---------------------------------------------------------------------
+  This function computes the required joint angles to move the arm
+  to a desired position and nudges the arm towards that position.
 
+-----------------------------------------------------------------------}
 -- updateArm :: ViewPort -> Float -> RobotArm -> RobotArm
-updateArm :: Float -> RobotArm -> (RobotArm, Point)
-updateArm dt (RobotArm links (xd, yd) grabState) =
-  -- if the y-coodinate is below the ground, then return
-  -- the current position
-  if yd < 0 then (RobotArm links (xd, yd) grabState, fk links)
-  else (RobotArm updatedLinks target grabState, fk updatedLinks)
+updateArm :: RobotArm -> (RobotArm, Point)
+updateArm (RobotArm links (xd, yd) grabState) = 
+  (RobotArm updatedLinks target grabState, fk updatedLinks)
   where
     target        = (xd, yd)
     desiredAngles = ik links target
     updatedLinks  = zipWith updateAngle links desiredAngles
 
+updateGrabState :: RobotArm -> RobotArm
+updateGrabState arm = arm {armGrabState = not $ armGrabState arm}
 
 
 {-------------------------------------------------------------
-  Math functions
+  Functions for moving the arm
 
 --------------------------------------------------------------}
 
@@ -131,8 +143,8 @@ fk links = (x, y)
 ik :: [Link] -> Point -> [Float]
 ik links (x, y) = [radToDeg q1, radToDeg q2]
   where
-    Link l1 a1 = head links
-    Link l2 a2 = links !! 1
+    Link l1 _ = head links
+    Link l2 _ = links !! 1
     gamma = atan2 y x
     distSquared = x**2 + y**2
     -- calculate joint angles
@@ -156,5 +168,60 @@ updateAngle (Link l a) a'
     step          = 0.5
     updatedAngle  = a + signum (a' - a) * step
 
-updateGrabState :: RobotArm -> RobotArm
-updateGrabState arm = arm {grabState = not $ grabState arm}
+
+ikNewtonRaphson :: [Link] -> Point -> Int -> [Link]
+ikNewtonRaphson links _ 0 = links
+ikNewtonRaphson links p n = ikNewtonRaphson (newtonRaphson links p) p (n-1)
+
+newtonRaphson :: [Link] -> Point -> [Link]
+newtonRaphson links (xd, yd)
+  | sqrt( e1**2 + e2**2 ) > tolerance = updatedLinks
+  | otherwise = links
+  where
+    tolerance = 0.001
+    Link l1 a1 = head links
+    Link l2 a2 = links !! 1
+    j        = jacobian links
+    (x0, y0) = fk links
+    (e1, e2) = (xd-x0, yd-y0)
+    a1' = a1 + (head j * e1)
+    a2' = a2 + (j !! 1 * e2)
+    updatedLinks = [Link l1 a1', Link l2 a2']
+
+
+loss :: Point -> [Link] -> Float
+loss (xd, yd) links = sqrt ( (term1**2) + (term2**2) )
+  where
+    term1 = xd - position cos links
+    term2 = yd - position sin links
+
+
+{- 
+  The gradient takes a scalar valued function and returns a vector of the
+  partial derivative of the function over each parameter.
+
+  These parameters are determined by the point we are evaluating each partial
+  derivative at.
+
+ -}
+gradient :: ([Link] -> Float) -> [Link] -> [Float]
+gradient f links = [partial1, partial2]
+  where
+    Link l1 a1 = head links
+    Link l2 a2 = links !! 1
+    h          = 0.0001
+    t1         = f [Link l1 a1,     Link l2 a2    ]
+    t1'        = f [Link l1 (a1+h), Link l2 a2    ]
+    t2         = f [Link l1 a1,     Link l2 a2    ]
+    t2'        = f [Link l1 a1,     Link l2 (a2+h)]
+    partial1   = (t1' - t1) / h
+    partial2   = (t2' - t2) / h
+
+
+jacobian :: [Link] -> [Float]
+jacobian links = [a1', a2']
+  where
+    a1' = sum (gradient (position cos) links)
+    a2' = sum (gradient (position sin) links)
+
+
