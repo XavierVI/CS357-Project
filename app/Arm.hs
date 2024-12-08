@@ -111,8 +111,6 @@ updateArm (RobotArm links (xd, yd) grabState) =
     desiredAngles = ik links target
     updatedLinks  = zipWith updateAngle links desiredAngles
 
-updateGrabState :: RobotArm -> RobotArm
-updateGrabState arm = arm {armGrabState = not $ armGrabState arm}
 
 
 {-------------------------------------------------------------
